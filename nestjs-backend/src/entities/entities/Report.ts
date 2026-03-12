@@ -1,0 +1,120 @@
+// import {
+//   Column,
+//   Entity,
+//   Index,
+//   JoinColumn,
+//   ManyToOne,
+//   OneToOne,
+//   PrimaryGeneratedColumn,
+// } from "typeorm";
+// import { AiResult } from "./AiResult";
+// import { Patient } from "./Patient";
+// import { Radiologist } from "./Radiologist";
+
+// @Index("report_pkey", ["reportid"], { unique: true })
+// @Entity("report", { schema: "public" })
+// export class Report {
+//   @PrimaryGeneratedColumn({ type: "integer", name: "reportid" })
+//   reportid: number;
+
+//   @Column("text", { name: "ecg_report", nullable: true })
+//   ecgReport: string | null;
+
+//   @Column("text", { name: "bloodtest_report", nullable: true })
+//   bloodtestReport: string | null;
+
+//   @Column("text", { name: "additional_files", nullable: true })
+//   additionalFiles: string | null;
+
+//   @Column("text", { name: "comments", nullable: true })
+//   comments: string | null;
+
+//   @Column("character varying", {
+//     name: "uploadstatus",
+//     nullable: true,
+//     length: 20,
+//     default: () => "'Uploaded'",
+//   })
+//   uploadstatus: string | null;
+
+//   @Column("timestamp without time zone", {
+//     name: "uploadedat",
+//     nullable: true,
+//     default: () => "CURRENT_TIMESTAMP",
+//   })
+//   uploadedat: Date | null;
+
+//   @OneToOne(() => AiResult, (aiResult) => aiResult.report)
+//   aiResult: AiResult;
+
+//   @ManyToOne(() => Patient, (patient) => patient.reports, {
+//     onDelete: "CASCADE",
+//   })
+//   @JoinColumn([{ name: "patientid", referencedColumnName: "patientid" }])
+//   patient: Patient;
+
+//   @ManyToOne(() => Radiologist, (radiologist) => radiologist.reports, {
+//     onDelete: "SET NULL",
+//   })
+//   @JoinColumn([
+//     { name: "radiologistid", referencedColumnName: "radiologistid" },
+//   ])
+//   radiologist: Radiologist;
+// }
+
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToOne,
+  PrimaryGeneratedColumn,
+} from "typeorm";
+import { AiResult } from "./AiResult";
+import { Feature } from "./Feature";
+import { Patient } from "./Patient";
+import { Radiologist } from "./Radiologist";
+
+@Index("report_pkey", ["reportid"], { unique: true })
+@Entity("report", { schema: "public" })
+export class Report {
+  @PrimaryGeneratedColumn({ type: "integer", name: "reportid" })
+  reportid: number;
+
+  @Column("character varying", { name: "filename", length: 255 })
+  filename: string;
+
+  @Column("text", { name: "filepath" })
+  filepath: string;
+
+  @Column("text", { name: "comment", nullable: true })
+  comment: string | null;
+
+  @Column("timestamp without time zone", {
+    name: "uploadedat",
+    nullable: true,
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  uploadedat: Date | null;
+
+  @ManyToOne(() => Patient, (patient) => patient.reports, {
+    onDelete: "CASCADE",
+  })
+  @JoinColumn([{ name: "patientid", referencedColumnName: "patientid" }])
+  patient: Patient;
+
+  @ManyToOne(() => Radiologist, (radiologist) => radiologist.reports, {
+    onDelete: "SET NULL",
+  })
+  @JoinColumn([
+    { name: "radiologistid", referencedColumnName: "radiologistid" },
+  ])
+  radiologist: Radiologist;
+
+  @OneToOne(() => Feature, (feature) => feature.report)
+  feature: Feature;
+
+  @OneToOne(() => AiResult, (aiResult) => aiResult.report)
+  aiResult: AiResult;
+}
