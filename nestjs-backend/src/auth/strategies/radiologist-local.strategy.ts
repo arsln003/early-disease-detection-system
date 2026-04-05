@@ -1,16 +1,15 @@
+// src/auth/strategies/radiologist-local.strategy.ts
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-local';
-import { AuthService } from './auth.service';
-import { Radiologist } from 'src/entities/entities/Radiologist';
+import { AuthService } from '../auth.service';
 
 @Injectable()
 export class RadiologistLocalStrategy extends PassportStrategy(Strategy, 'radiologist-local') {
-  constructor(private readonly authService: AuthService) {
+  constructor(private authService: AuthService) {
     super({ usernameField: 'email' });
   }
-
-  async validate(email: string, password: string): Promise<Radiologist> {
+  validate(email: string, password: string) {
     return this.authService.validateRadiologist(email, password);
   }
 }

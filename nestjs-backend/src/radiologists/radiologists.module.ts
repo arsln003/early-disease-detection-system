@@ -6,12 +6,13 @@ import { RadiologistService } from './radiologists.service';
 import { OcrModule } from 'src/ocr/ocr.module';
 import { ReportsModule } from 'src/reports/reports.module';
 import { PredictionModule } from 'src/prediction/prediction.module';
+import { AuthModule } from 'src/auth/auth.module';
 @Module({
   imports: [TypeOrmModule.forFeature([Radiologist]),
-  OcrModule, ReportsModule, PredictionModule
+  OcrModule, ReportsModule, PredictionModule, AuthModule
   ],
   controllers: [RadiologistController],
   providers: [RadiologistService],
-  exports: [RadiologistService], 
+  exports: [RadiologistService,TypeOrmModule], 
 })
 export class RadiologistModule {}

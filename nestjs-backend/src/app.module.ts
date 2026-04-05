@@ -46,12 +46,12 @@ import { PredictionModule } from './prediction/prediction.module';
       entities: [Doctor, Patient, Assignment, Admin,Report,AiResult,Radiologist,Feature],
 
     }),
-  
+   AdminModule,
  AuthModule,
 
     DoctorsModule,
     PatientsModule,
-    AdminModule,
+   
     RadiologistModule,
     AssignmentsModule,
     ReportsModule,

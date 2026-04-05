@@ -5,7 +5,8 @@ import { Repository } from 'typeorm';
 import { Doctor } from 'src/entities/entities/Doctor';
 import { Patient } from 'src/entities/entities/Patient';
 import { Report } from 'src/entities/entities/Report';
-
+import { Admin } from 'src/entities/entities/Admin';
+import * as bcrypt from 'bcrypt';
 @Injectable()
 export class AdminService {
   constructor(
@@ -17,6 +18,8 @@ export class AdminService {
 
     @InjectRepository(Report)
     private readonly reportRepository: Repository<Report>,
+    @InjectRepository(Admin)
+    private readonly adminRepository: Repository<Admin>,
   ) {}
 
   // 🔹 Dashboard Stats
@@ -33,4 +36,28 @@ export class AdminService {
       totalReports,
     };
   }
+
+   // Method to add admin
+  async addAdmin(
+    fullname: string,
+    email: string,
+    password: string,
+    contactnumber: string,
+    role: string = 'Admin',
+  ): Promise<Admin> {
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newAdmin = this.adminRepository.create({
+      fullname,
+      email,
+      password: hashedPassword,
+      contactnumber,
+      role,
+    });
+
+    return this.adminRepository.save(newAdmin);
+  }
+
+
 }

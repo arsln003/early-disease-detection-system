@@ -1,30 +1,33 @@
-import { Controller, Post, UseGuards, Request } from '@nestjs/common';
+// src/auth/auth.controller.ts
+import { Controller, Post, Request, UseGuards, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { AuthGuard } from '@nestjs/passport';
+import { AdminLocalGuard } from './guards/admin-local-auth.guard';
+import { DoctorLocalGuard } from './guards/doctor-local-auth.guard';
+import { RadiologistLocalGuard } from './guards/radiologist-local-auth.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // ---------- ADMIN LOGIN ----------
-  @UseGuards(AuthGuard('admin-local'))
+  @UseGuards(AdminLocalGuard)       // runs AdminLocalStrategy → sets req.user
+  @HttpCode(200)
   @Post('admin/login')
-  async adminLogin(@Request() req) {
-    return this.authService.login(req.user);
+  adminLogin(@Request() req) {
+    return this.authService.loginAdmin(req.user);
+    // returns { access_token: "..." }
   }
 
-  // ---------- DOCTOR LOGIN ----------
-  @UseGuards(AuthGuard('doctor-local'))
+  @UseGuards(DoctorLocalGuard)
+  @HttpCode(200)
   @Post('doctor/login')
-  async doctorLogin(@Request() req) {
-    return this.authService.doctorLogin(req.user);
+  doctorLogin(@Request() req) {
+    return this.authService.loginDoctor(req.user);
   }
 
-// ---------- Radiologist LOGIN ----------
-@UseGuards(AuthGuard('radiologist-local'))
-@Post('radiologist/login')
-radiologistLogin(@Request() req) {
-  return this.authService.radiologistLogin(req.user);
-}
-
+  @UseGuards(RadiologistLocalGuard)
+  @HttpCode(200)
+  @Post('radiologist/login')
+  radiologistLogin(@Request() req) {
+    return this.authService.loginRadiologist(req.user);
+  }
 }

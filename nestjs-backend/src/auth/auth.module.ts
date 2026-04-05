@@ -1,33 +1,41 @@
+// src/auth/auth.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { LocalStrategy } from './local.strategy';
-import { JwtStrategy } from './jwt.strategy';
-
 import { Admin } from 'src/entities/entities/Admin';
-import { DoctorLocalStrategy } from './doctor-local.strategy';
 import { Doctor } from 'src/entities/entities/Doctor';
-import { Reflector } from '@nestjs/core';
-import { RolesGuard } from './roles.guard';
-import { RadiologistLocalStrategy } from './radiologist-local.strategy';
 import { Radiologist } from 'src/entities/entities/Radiologist';
 
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+
+import { AdminLocalStrategy } from './strategies/admin-local.strategy';
+import { DoctorLocalStrategy } from './strategies/doctor-local.strategy';
+import { RadiologistLocalStrategy } from './strategies/radiologist-local.strategy';
+import { JwtStrategy } from './strategies/jwt.strategy';
+
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Admin,Doctor,Radiologist]),
+    TypeOrmModule.forFeature([Admin, Doctor, Radiologist]),
     PassportModule,
     JwtModule.register({
-      secret: 'SUPER_SECRET_KEY_CHANGE_ME',   // move to .env later
+      secret: process.env.JWT_SECRET ?? 'SUPER_SECRET_KEY',
       signOptions: { expiresIn: '1d' },
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, DoctorLocalStrategy,JwtStrategy,RadiologistLocalStrategy,RolesGuard,Reflector],
-  exports: [AuthService],
+  providers: [
+    AuthService,
+    AdminLocalStrategy,
+    DoctorLocalStrategy,
+    RadiologistLocalStrategy,
+    JwtStrategy,
+    RolesGuard,
+  ],
+  exports: [AuthService, JwtModule, RolesGuard],
 })
 export class AuthModule {}

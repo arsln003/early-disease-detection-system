@@ -1,45 +1,21 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query,UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { DoctorsService } from './doctors.service';
-import { Doctor } from 'src/entities/entities/Doctor';
-import { Assignment } from 'src/entities/entities/Assignment';
-import { AuthGuard } from '@nestjs/passport';
-import { RolesGuard } from 'src/auth/roles.guard';
-import { Roles } from 'src/auth/roles.decorator';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
 
-
+@Roles('doctor')                        // ✅ lowercase matches JWT payload
+@UseGuards(JwtAuthGuard, RolesGuard)    // ✅ use JwtAuthGuard, not AuthGuard('jwt')
 @Controller('doctors')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles('Doctor')
 export class DoctorsController {
   constructor(private readonly doctorsService: DoctorsService) {}
 
-// 3️⃣ Postman calls for each tab
-
-// Base URL: http://localhost:3000/doctors/3/assigned-patients/details
-
-// All
-// GET /doctors/3/assigned-patients/details?severity=all
-
-// Critical
-// GET /doctors/3/assigned-patients/details?severity=critical
-
-// Moderate
-// GET /doctors/3/assigned-patients/details?severity=moderate
-
-// Normal
-// GET /doctors/3/assigned-patients/details?severity=normal
-
-
- 
-  // GET /doctors/3/assigned-patients/details?severity=critical|moderate|normal|all
+  // GET /doctors/:id/assigned-patients/details?severity=critical|moderate|normal|all
   @Get(':id/assigned-patients/details')
-  async getAssignedPatientsWithDetails(
-    @Param('id') id: number,
-    @Query('severity') severity?: 'all' | 'critical' | 'moderate' | 'normal',
+  getAssignedPatientsWithDetails(
+    @Param('id', ParseIntPipe) id: number,          // ✅ ParseIntPipe, no manual +id
+    @Query('severity') severity: 'all' | 'critical' | 'moderate' | 'normal' = 'all',
   ) {
-    return this.doctorsService.getAssignedPatientsWithDetails(
-      +id,
-      (severity as any) || 'all',
-    );
+    return this.doctorsService.getAssignedPatientsWithDetails(id, severity);
   }
 }

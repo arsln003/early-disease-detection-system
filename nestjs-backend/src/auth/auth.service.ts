@@ -1,107 +1,77 @@
 // src/auth/auth.service.ts
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt'; // Ensure bcrypt is installed
-import { Radiologist } from 'src/entities/entities/Radiologist';
+import * as bcrypt from 'bcrypt';
+
 import { Admin } from 'src/entities/entities/Admin';
 import { Doctor } from 'src/entities/entities/Doctor';
+import { Radiologist } from 'src/entities/entities/Radiologist';
+import { Role } from './decorators/roles.decorator';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(Admin)
-    private readonly adminRepository: Repository<Admin>,
+    private readonly adminRepo: Repository<Admin>,
+
     @InjectRepository(Doctor)
-    private readonly doctorRepository: Repository<Doctor>,
+    private readonly doctorRepo: Repository<Doctor>,
+
     @InjectRepository(Radiologist)
-    private readonly radiologistRepository: Repository<Radiologist>,
+    private readonly radiologistRepo: Repository<Radiologist>,
+
     private readonly jwtService: JwtService,
   ) {}
 
-  // ... Admin logic same rahegi agar wo plain text use kar raha hai ...
-async validateAdmin(email: string, password: string): Promise<Admin> {
-    const admin = await this.adminRepository.findOne({ where: { email } });
+  // ── helpers ──────────────────────────────────────────────────────────────
 
-    if (!admin) {
-      throw new UnauthorizedException('Invalid credentials');
+  private sign(id: number, email: string, role: Role) {
+    return {
+      access_token: this.jwtService.sign({ sub: id, email, role }),
+    };
+  }
+
+  // ── Admin ─────────────────────────────────────────────────────────────────
+
+  async validateAdmin(email: string, password: string): Promise<Admin> {
+    const admin = await this.adminRepo.findOne({ where: { email } });
+    if (!admin || !(await bcrypt.compare(password, admin.password))) {
+      throw new UnauthorizedException('Invalid admin credentials');
     }
-
-    // plain text for admin (you can change to bcrypt later)
-    const passwordValid = admin.password === password;
-
-    if (!passwordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
     return admin;
   }
 
-  async login(admin: Admin) {
-    const payload = {
-      sub: admin.adminid,
-      email: admin.email,
-      role: admin.role || 'Admin',
-    };
-
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+  loginAdmin(admin: Admin) {
+    return this.sign(admin.adminid, admin.email, 'admin');
   }
 
-  // ---------- DOCTOR ----------
+  // ── Doctor ────────────────────────────────────────────────────────────────
+
   async validateDoctor(email: string, password: string): Promise<Doctor> {
-    const doctor = await this.doctorRepository.findOne({ where: { email } });
-
-    if (!doctor) {
-      throw new UnauthorizedException('Invalid credentials');
+    const doctor = await this.doctorRepo.findOne({ where: { email } });
+    if (!doctor || !(await bcrypt.compare(password, doctor.password))) {
+      throw new UnauthorizedException('Invalid doctor credentials');
     }
-
-    // --- FIX IS HERE ---
-    // Direct '===' hata kar wapis bcrypt.compare use karein
-    const passwordValid = await bcrypt.compare(password, doctor.password);
-    
-    if (!passwordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
     return doctor;
   }
 
-  async doctorLogin(doctor: Doctor) {
-    const payload = {
-      sub: doctor.doctorid,
-      email: doctor.email,
-      role: 'Doctor',
-    };
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+  loginDoctor(doctor: Doctor) {
+    return this.sign(doctor.doctorid, doctor.email, 'doctor');
   }
 
-  // -------- RADIOLOGIST LOGIN --------
+  // ── Radiologist ───────────────────────────────────────────────────────────
+
   async validateRadiologist(email: string, password: string): Promise<Radiologist> {
-    const user = await this.radiologistRepository.findOne({ where: { email } });
-
-    if (!user) throw new UnauthorizedException('Invalid credentials');
-
-    // --- FIX IS HERE ---
-    const valid = await bcrypt.compare(password, user.password);
-    
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
-
-    return user;
+    const radiologist = await this.radiologistRepo.findOne({ where: { email } });
+    if (!radiologist || !(await bcrypt.compare(password, radiologist.password))) {
+      throw new UnauthorizedException('Invalid radiologist credentials');
+    }
+    return radiologist;
   }
 
-  async radiologistLogin(radiologist: Radiologist) {
-    const payload = {
-      sub: radiologist.radiologistid,
-      email: radiologist.email,
-      role: 'Radiologist',
-    };
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+  loginRadiologist(radiologist: Radiologist) {
+    return this.sign(radiologist.radiologistid, radiologist.email, 'radiologist');
   }
 }

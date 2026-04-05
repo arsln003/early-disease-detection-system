@@ -2,9 +2,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-
+import { AdminService } from 'src/admin/admin.service';
+import { DataSource } from 'typeorm';
+import { seedAdmins } from './database/seeds/admin.seed';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+     const dataSource = app.get(DataSource);
+      await seedAdmins(dataSource);
 
   // --- YEH LINE ADD KARO ---
   app.enableCors({
