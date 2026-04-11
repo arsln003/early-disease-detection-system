@@ -64,25 +64,48 @@ export class DoctorsService {
   }
 
 //update
-async updateDoctor(
-  id: number,
-  data: UpdateDoctorDto,
-): Promise<Doctor> {
+// async updateDoctor(
+//   id: number,
+//   data: UpdateDoctorDto,
+// ): Promise<Doctor> {
+//   const doctor = await this.doctorRepository.findOneBy({ doctorid: id });
+//   if (!doctor) {
+//     throw new NotFoundException(`Doctor with id ${id} not found`);
+//   }
+
+//   // Only include allowed fields
+//   const allowedData: Partial<Pick<Doctor, 'fullname' | 'specialization' | 'email' | 'status'>> = {
+//     fullname: data.fullname,
+//     specialization: data.specialization,
+//     email: data.email,
+//     status: data.status,
+//   };
+
+//   await this.doctorRepository.update(id, allowedData);
+//   return await this.doctorRepository.findOneByOrFail({ doctorid: id });
+// }
+
+async updateDoctor(id: number, data: UpdateDoctorDto): Promise<Doctor> {
   const doctor = await this.doctorRepository.findOneBy({ doctorid: id });
   if (!doctor) {
     throw new NotFoundException(`Doctor with id ${id} not found`);
   }
 
-  // Only include allowed fields
-  const allowedData: Partial<Pick<Doctor, 'fullname' | 'specialization' | 'email' | 'status'>> = {
+  const allowedData: Partial<Doctor> = {
     fullname: data.fullname,
     specialization: data.specialization,
     email: data.email,
     status: data.status,
   };
 
-  await this.doctorRepository.update(id, allowedData);
-  return await this.doctorRepository.findOneByOrFail({ doctorid: id });
+  // ✅ hash password if provided
+  if (data.password && data.password.trim().length > 0) {
+    const salt = await bcrypt.genSalt(10);
+    allowedData.password = await bcrypt.hash(data.password, salt);
+  }
+
+  await this.doctorRepository.update({ doctorid: id }, allowedData);
+  return this.doctorRepository.findOneByOrFail({ doctorid: id });
 }
 
 

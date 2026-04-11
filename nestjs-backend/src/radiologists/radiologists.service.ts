@@ -65,34 +65,64 @@ async createRadiologist(dto: CreateRadiologistDto): Promise<Radiologist> {
     }
   }
 
-  // ---- UPDATE ----
- async updateRadiologist(
-  id: number,
-  dto: UpdateRadiologistDto
-): Promise<Radiologist> {
+//   // ---- UPDATE ----
+//  async updateRadiologist(
+//   id: number,
+//   dto: UpdateRadiologistDto
+// ): Promise<Radiologist> {
   
+//   const radiologist = await this.radiologistRepository.findOne({
+//     where: { radiologistid: id }
+//   });
+
+//   if (!radiologist) {
+//     throw new NotFoundException(`Radiologist with id ${id} not found`);
+//   }
+
+//   // If email is being updated → Check duplicate
+//   if (dto.email) {
+//     const existing = await this.radiologistRepository.findOne({
+//       where: { email: dto.email }
+//     });
+
+//     if (existing && existing.radiologistid !== id) {
+//       throw new ConflictException("Another radiologist already uses this email");
+//     }
+//   }
+
+//   // Update fields
+//   Object.assign(radiologist, dto);
+
+//   return this.radiologistRepository.save(radiologist);
+// }
+async updateRadiologist(id: number, dto: UpdateRadiologistDto): Promise<Radiologist> {
   const radiologist = await this.radiologistRepository.findOne({
-    where: { radiologistid: id }
+    where: { radiologistid: id },
   });
 
   if (!radiologist) {
     throw new NotFoundException(`Radiologist with id ${id} not found`);
   }
 
-  // If email is being updated → Check duplicate
+  // Check duplicate email
   if (dto.email) {
     const existing = await this.radiologistRepository.findOne({
-      where: { email: dto.email }
+      where: { email: dto.email },
     });
-
     if (existing && existing.radiologistid !== id) {
-      throw new ConflictException("Another radiologist already uses this email");
+      throw new ConflictException('Another radiologist already uses this email');
     }
   }
 
-  // Update fields
-  Object.assign(radiologist, dto);
+  // ✅ hash password if provided
+  if (dto.password && dto.password.trim().length > 0) {
+    const salt = await bcrypt.genSalt(10);
+    dto.password = await bcrypt.hash(dto.password, salt);
+  } else {
+    delete dto.password; // ✅ don't overwrite existing password with empty string
+  }
 
+  Object.assign(radiologist, dto);
   return this.radiologistRepository.save(radiologist);
 }
 
