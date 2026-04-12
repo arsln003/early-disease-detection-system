@@ -171,4 +171,58 @@ async getReportsByPatientId(patientId: number) {
 }
 
 
+async getAllReports() {
+  const reports = await this.reportsRepository.find({
+    relations: ['patient', 'radiologist', 'feature', 'aiResult'],
+    order: { uploadedat: 'DESC' },
+  });
+
+  return {
+    message: 'Reports fetched successfully',
+    total: reports.length,
+    reports: reports.map((report) => ({
+      reportid: report.reportid,
+      filename: report.filename,
+      comment: report.comment,
+      uploadedat: report.uploadedat,
+      patient: {
+        patientid: report.patient?.patientid,
+        fullname: report.patient?.fullname,
+        email: report.patient?.email,
+      },
+      radiologist: {
+        radiologistid: report.radiologist?.radiologistid,
+        fullname: report.radiologist?.fullname,
+      },
+      feature: report.feature
+        ? {
+            age: report.feature.age,
+            gender: report.feature.gender,
+            height: report.feature.height,
+            weight: report.feature.weight,
+            ap_hi: report.feature.ap_hi,
+            ap_lo: report.feature.ap_lo,
+            cholesterol: report.feature.cholesterol,
+            gluc: report.feature.gluc,
+            smoke: report.feature.smoke,
+            alco: report.feature.alco,
+            active: report.feature.active,
+            cardio: report.feature.cardio,
+          }
+        : null,
+      aiResult: report.aiResult
+        ? {
+            prediction: report.aiResult.prediction,
+            probability: report.aiResult.probability,
+            classification: report.aiResult.classification,
+            remarks: report.aiResult.remarks,
+          }
+        : null,
+    })),
+  };
+}
+
+
+
+
 }

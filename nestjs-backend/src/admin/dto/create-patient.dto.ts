@@ -25,4 +25,8 @@ export class CreatePatientDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @IsOptional()
+  @IsString()
+  doctorName?: string;   // ✅ optional — can assign later
 }

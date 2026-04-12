@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards, ParseIntPipe, Req } from '@nestjs/common';
 import { DoctorsService } from './doctors.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -18,4 +18,14 @@ export class DoctorsController {
   ) {
     return this.doctorsService.getAssignedPatientsWithDetails(id, severity);
   }
+
+
+
+  // GET /doctors/my-patients  ← logged in doctor sees their own patients
+  @Get('my-patients')
+  getMyPatients(@Req() req: any) {
+    return this.doctorsService.getAssignedPatients(req.user.id);
+  }
+
+
 }

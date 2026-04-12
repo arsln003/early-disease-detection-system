@@ -194,6 +194,7 @@
 import {
   Body, Controller, Delete, Get,
   Param, Patch, Post, UseGuards, ParseIntPipe,
+  Req,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
@@ -218,6 +219,7 @@ import { Admin } from 'src/entities/entities/Admin';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
+import { AssignDoctorDto } from './dto/assign-doctor.dto';
 
 @Roles('admin')                      // ✅ correct position & lowercase
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -267,11 +269,13 @@ export class AdminController {
     return this.patientsService.findAllPatients();
   }
 
-  @Post('patients')
-  createPatient(@Body() dto: CreatePatientDto): Promise<Patient> {
-    return this.patientsService.createPatient(dto);
-  }
-
+ @Post('patients')
+createPatient(
+  @Body() dto: CreatePatientDto,
+  @Req() req: any,
+) {
+  return this.patientsService.createPatient(dto, req.user.id);
+}
   @Patch('patients/:id')
   updatePatient(
     @Param('id', ParseIntPipe) id: number,
@@ -285,6 +289,25 @@ export class AdminController {
     await this.patientsService.deletePatient(id);
     return { message: `Patient with id ${id} deleted successfully` };
   }
+
+@Post('patients/:id/assign-doctor')
+assignDoctor(
+  @Param('id', ParseIntPipe) patientId: number,
+  @Body() dto: AssignDoctorDto,
+  @Req() req: any,
+) {
+  return this.patientsService.assignDoctor(patientId, dto.doctorName, req.user.id);
+}
+
+@Patch('patients/:id/reassign-doctor')
+reassignDoctor(
+  @Param('id', ParseIntPipe) patientId: number,
+  @Body() dto: AssignDoctorDto,
+  @Req() req: any,
+) {
+  return this.patientsService.reassignDoctor(patientId, dto.doctorName, req.user.id);
+}
+
 
   // ── Radiologists ───────────────────────────────────────────────────────
   @Get('radiologists/with-report-count')  // ✅ specific route BEFORE :id

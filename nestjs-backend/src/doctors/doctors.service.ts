@@ -63,28 +63,8 @@ export class DoctorsService {
     }
   }
 
-//update
-// async updateDoctor(
-//   id: number,
-//   data: UpdateDoctorDto,
-// ): Promise<Doctor> {
-//   const doctor = await this.doctorRepository.findOneBy({ doctorid: id });
-//   if (!doctor) {
-//     throw new NotFoundException(`Doctor with id ${id} not found`);
-//   }
 
-//   // Only include allowed fields
-//   const allowedData: Partial<Pick<Doctor, 'fullname' | 'specialization' | 'email' | 'status'>> = {
-//     fullname: data.fullname,
-//     specialization: data.specialization,
-//     email: data.email,
-//     status: data.status,
-//   };
-
-//   await this.doctorRepository.update(id, allowedData);
-//   return await this.doctorRepository.findOneByOrFail({ doctorid: id });
-// }
-
+  //update doctor
 async updateDoctor(id: number, data: UpdateDoctorDto): Promise<Doctor> {
   const doctor = await this.doctorRepository.findOneBy({ doctorid: id });
   if (!doctor) {
@@ -107,6 +87,64 @@ async updateDoctor(id: number, data: UpdateDoctorDto): Promise<Doctor> {
   await this.doctorRepository.update({ doctorid: id }, allowedData);
   return this.doctorRepository.findOneByOrFail({ doctorid: id });
 }
+
+
+//Assign patient details to doctor
+async getAssignedPatients(doctorId: number): Promise<any> {
+  const doctor = await this.doctorRepository.findOne({
+    where: { doctorid: doctorId },
+  });
+  if (!doctor) {
+    throw new NotFoundException(`Doctor with id ${doctorId} not found`);
+  }
+
+  const assignments = await this.assignmentRepository.find({
+    where: { doctor: { doctorid: doctorId } },
+    relations: ['patient', 'patient.reports', 'patient.reports.aiResult'],
+    order: { assignedat: 'DESC' },
+  });
+
+  if (!assignments.length) {
+    return {
+      message: 'No patients assigned to this doctor',
+      total: 0,
+      patients: [],
+    };
+  }
+
+  return {
+    message: 'Assigned patients fetched successfully',
+    total: assignments.length,
+    patients: assignments.map((a) => ({
+      assignmentid: a.assignmentid,
+      assignedat: a.assignedat,
+      patient: {
+        patientid: a.patient.patientid,
+        fullname: a.patient.fullname,
+        email: a.patient.email,
+        age: a.patient.age,
+        gender: a.patient.gender,
+        contactnumber: a.patient.contactnumber,
+        address: a.patient.address,
+        reports: a.patient.reports?.map((r) => ({
+          reportid: r.reportid,
+          filename: r.filename,
+          comment: r.comment,
+          uploadedat: r.uploadedat,
+          aiResult: r.aiResult
+            ? {
+                prediction: r.aiResult.prediction,
+                probability: r.aiResult.probability,
+                classification: r.aiResult.classification,
+                remarks: r.aiResult.remarks,
+              }
+            : null,
+        })),
+      },
+    })),
+  };
+}
+
 
 
 // get assigned patient info
