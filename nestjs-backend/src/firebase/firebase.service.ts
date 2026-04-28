@@ -15,13 +15,14 @@ export class FirebaseService implements OnModuleInit {
   }
 
   async sendReportToDoctor(payload: {
-    fcmToken: string;
+    fcmToken: string| null;
     doctorName: string;
     patientName: string;
     reportId: number;
     radiologistName: string;
     comment?: string;
   }): Promise<void> {
+     if (!payload.fcmToken?.trim()) return;
     const message: admin.messaging.Message = {
       token: payload.fcmToken,
       notification: {

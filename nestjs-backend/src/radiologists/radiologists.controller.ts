@@ -102,15 +102,15 @@ getAllPatients() {
 
 
   // ── Prediction ─────────────────────────────────────────────────────────
-  @Post('predict/:reportId')
-  generatePrediction(@Param('reportId', ParseIntPipe) reportId: number) {
-    return this.predictionService.predictFromFeature(reportId);
-  }
+  // @Post('predict/:reportId')
+  // generatePrediction(@Param('reportId', ParseIntPipe) reportId: number) {
+  //   return this.predictionService.predictFromFeature(reportId);
+  // }
 
-  @Get('prediction/:reportId')
-  getPrediction(@Param('reportId', ParseIntPipe) reportId: number) {
-    return this.predictionService.getPredictionByReportId(reportId);
-  }
+  // @Get('prediction/:reportId')
+  // getPrediction(@Param('reportId', ParseIntPipe) reportId: number) {
+  //   return this.predictionService.getPredictionByReportId(reportId);
+  // }
 
 
 //send report to doctor

@@ -15,11 +15,12 @@ import { PredictionService } from './prediction.service';
 import { AiResult } from 'src/entities/entities/AiResult';
 import { Feature } from 'src/entities/entities/Feature';
 import { Report } from 'src/entities/entities/Report';
+import { Assignment } from 'src/entities/entities/Assignment';
 
 @Module({
   imports: [
     HttpModule,
-    TypeOrmModule.forFeature([AiResult, Feature, Report]),
+    TypeOrmModule.forFeature([AiResult, Feature, Report, Assignment]),
   ],
   providers: [PredictionService],
   exports: [PredictionService],

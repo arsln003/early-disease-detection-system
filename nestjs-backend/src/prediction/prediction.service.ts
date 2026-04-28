@@ -6,7 +6,7 @@ import { Repository } from 'typeorm';
 import { AiResult } from 'src/entities/entities/AiResult';
 import { Feature } from 'src/entities/entities/Feature';
 import { Report } from 'src/entities/entities/Report';
-
+import { Assignment } from 'src/entities/entities/Assignment';
 @Injectable()
 export class PredictionService {
   constructor(
@@ -20,20 +20,30 @@ export class PredictionService {
 
     @InjectRepository(Report)
     private readonly reportRepository: Repository<Report>,
+    @InjectRepository(Assignment)          // ← add
+  private readonly assignmentRepository: Repository<Assignment>,
   ) {}
 
-//   async predictFromFeature(reportId: number) {
+
+// async predictFromFeature(reportId: number) {
+//   try {
+//     if (!reportId || isNaN(reportId)) {
+//       throw new BadRequestException('Invalid report ID');
+//     }
+
 //     const report = await this.reportRepository.findOne({
 //       where: { reportid: reportId },
 //       relations: ['feature'],
 //     });
 
 //     if (!report) {
-//       throw new InternalServerErrorException('Report not found');
+//       throw new NotFoundException(`Report with ID ${reportId} not found`);
 //     }
 
 //     if (!report.feature) {
-//       throw new InternalServerErrorException('Feature data not found for this report');
+//       throw new NotFoundException(
+//         `Feature data not found for report ID ${reportId}`,
+//       );
 //     }
 
 //     const feature = report.feature;
@@ -52,57 +62,102 @@ export class PredictionService {
 //       active: feature.active,
 //     };
 
+//     const requiredFields = [
+//       'age',
+//       'gender',
+//       'height',
+//       'weight',
+//       'ap_hi',
+//       'ap_lo',
+//       'cholesterol',
+//       'gluc',
+//       'smoke',
+//       'alco',
+//       'active',
+//     ];
+
+//     const missingFields = requiredFields.filter(
+//       (field) => payload[field] === null || payload[field] === undefined,
+//     );
+
+//     if (missingFields.length > 0) {
+//       throw new BadRequestException(
+//         `Missing required feature values: ${missingFields.join(', ')}`,
+//       );
+//     }
+
+//     let response;
 //     try {
-//       const response = await firstValueFrom(
+//       response = await firstValueFrom(
 //         this.httpService.post('http://localhost:8000/predict', payload),
 //       );
-
-//       const result = response.data;
-
-//       let aiResult = await this.aiResultRepository.findOne({
-//         where: { reportid: reportId },
-//       });
-
-//       if (!aiResult) {
-//         aiResult = this.aiResultRepository.create({
-//           reportid: reportId,
-//         });
-//       }
-
-//       aiResult.prediction = result.prediction;
-//       aiResult.probability = result.probability;
-//       aiResult.classification =
-//         result.prediction === 1 ? 'High Risk' : 'Low Risk';
-//       aiResult.modelname = 'CardioModelV1';
-//       aiResult.keyparameters = `BP: ${feature.ap_hi}/${feature.ap_lo}, Cholesterol: ${feature.cholesterol}, Glucose: ${feature.gluc}`;
-//       aiResult.remarks =
-//         result.prediction === 1
-//           ? 'Predicted high cardiovascular risk'
-//           : 'Predicted low cardiovascular risk';
-
-//       await this.aiResultRepository.save(aiResult);
-
-//       return {
-//         message: 'Prediction generated successfully',
-//         aiResult,
-//       };
 //     } catch (error) {
-//     //   console.error('Prediction error:', error?.response?.data || error.message);
-//     //   throw new InternalServerErrorException('Prediction API failed');
-   
-//   console.error('Prediction error full:', error);
-//   console.error('Prediction error response:', error?.response?.data);
-//   console.error('Prediction error message:', error?.message);
-//   console.error('Prediction error stack:', error?.stack);
+//       console.error('Python API error:', error?.response?.data || error.message);
 
-//   throw new InternalServerErrorException('Prediction API failed');
-
+//       throw new InternalServerErrorException('Failed to get response from prediction API');
 //     }
-//   }
+
+//     const result = response.data;
+
+//     if (
+//       result?.prediction === undefined ||
+//       result?.prediction === null ||
+//       result?.probability === undefined ||
+//       result?.probability === null
+//     ) {
+//       throw new InternalServerErrorException(
+//         'Prediction API returned an invalid response',
+//       );
+//     }
+
+//     let aiResult = await this.aiResultRepository.findOne({
+//       where: { reportid: reportId },
+//     });
+
+//     if (!aiResult) {
+//       aiResult = this.aiResultRepository.create({
+//         reportid: reportId,
+//       });
+//     }
+
+//     aiResult.prediction = result.prediction;
+//     aiResult.probability = result.probability;
+//     aiResult.classification =
+//       result.prediction === 1 ? 'High Risk' : 'Low Risk';
+//     aiResult.modelname = 'CardioModelV1';
+//     aiResult.keyparameters = `BP: ${feature.ap_hi}/${feature.ap_lo}, Cholesterol: ${feature.cholesterol}, Glucose: ${feature.gluc}`;
+//     aiResult.remarks =
+//       result.prediction === 1
+//         ? 'Predicted high cardiovascular risk'
+//         : 'Predicted low cardiovascular risk';
+
+//     let savedResult;
+//     try {
+//       savedResult = await this.aiResultRepository.save(aiResult);
+//     } catch (error) {
+//       console.error('Database save error:', error);
+//       throw new InternalServerErrorException('Failed to save AI prediction result');
+//     }
+
+//     return {
+//       message: 'Prediction generated successfully',
+//       aiResult: savedResult,
+//     };
+//   } catch (error) {
+//     if (
+//       error instanceof BadRequestException ||
+//       error instanceof NotFoundException ||
+//       error instanceof InternalServerErrorException
+//     ) {
+//       throw error;
+//     }
+
+//     console.error('Unexpected prediction error:', error);
+//     throw new InternalServerErrorException('Prediction process failed');
+//   }}
 
 
-
-async predictFromFeature(reportId: number) {
+async predictFromFeature(reportId: number, doctorId: number) {
   try {
     if (!reportId || isNaN(reportId)) {
       throw new BadRequestException('Invalid report ID');
@@ -110,11 +165,26 @@ async predictFromFeature(reportId: number) {
 
     const report = await this.reportRepository.findOne({
       where: { reportid: reportId },
-      relations: ['feature'],
+      relations: ['feature', 'patient'],
     });
 
     if (!report) {
       throw new NotFoundException(`Report with ID ${reportId} not found`);
+    }
+
+    // ── Check: doctor is assigned to this patient ──
+    const assignment = await this.assignmentRepository.findOne({
+      where: {
+        doctor: { doctorid: doctorId },
+        patient: { patientid: report.patient.patientid },
+      },
+      relations: ['doctor', 'patient'],
+    });
+
+    if (!assignment) {
+      throw new BadRequestException(
+        'You are not authorized to access this report. Patient is not assigned to you.',
+      );
     }
 
     if (!report.feature) {
@@ -140,17 +210,9 @@ async predictFromFeature(reportId: number) {
     };
 
     const requiredFields = [
-      'age',
-      'gender',
-      'height',
-      'weight',
-      'ap_hi',
-      'ap_lo',
-      'cholesterol',
-      'gluc',
-      'smoke',
-      'alco',
-      'active',
+      'age', 'gender', 'height', 'weight',
+      'ap_hi', 'ap_lo', 'cholesterol',
+      'gluc', 'smoke', 'alco', 'active',
     ];
 
     const missingFields = requiredFields.filter(
@@ -170,7 +232,6 @@ async predictFromFeature(reportId: number) {
       );
     } catch (error) {
       console.error('Python API error:', error?.response?.data || error.message);
-
       throw new InternalServerErrorException('Failed to get response from prediction API');
     }
 
@@ -192,15 +253,12 @@ async predictFromFeature(reportId: number) {
     });
 
     if (!aiResult) {
-      aiResult = this.aiResultRepository.create({
-        reportid: reportId,
-      });
+      aiResult = this.aiResultRepository.create({ reportid: reportId });
     }
 
     aiResult.prediction = result.prediction;
     aiResult.probability = result.probability;
-    aiResult.classification =
-      result.prediction === 1 ? 'High Risk' : 'Low Risk';
+    aiResult.classification = result.prediction === 1 ? 'High Risk' : 'Low Risk';
     aiResult.modelname = 'CardioModelV1';
     aiResult.keyparameters = `BP: ${feature.ap_hi}/${feature.ap_lo}, Cholesterol: ${feature.cholesterol}, Glucose: ${feature.gluc}`;
     aiResult.remarks =
@@ -220,6 +278,7 @@ async predictFromFeature(reportId: number) {
       message: 'Prediction generated successfully',
       aiResult: savedResult,
     };
+
   } catch (error) {
     if (
       error instanceof BadRequestException ||
@@ -228,18 +287,81 @@ async predictFromFeature(reportId: number) {
     ) {
       throw error;
     }
-
     console.error('Unexpected prediction error:', error);
     throw new InternalServerErrorException('Prediction process failed');
-  }}
+  }
+}
+
+
+
+// // get Prediction result by report id
+// async getPredictionByReportId(reportId: number) {
+//   try {
+//     // validate input
+//     if (!reportId || isNaN(reportId)) {
+//       throw new BadRequestException('Invalid report ID');
+//     }
+
+//     const result = await this.aiResultRepository.findOne({
+//       where: { reportid: reportId },
+//       relations: ['report', 'report.patient'],
+//     });
+
+//     if (!result) {
+//       throw new NotFoundException(
+//         `AI prediction not found for report ID ${reportId}`,
+//       );
+//     }
+
+//     if (!result.report) {
+//       throw new NotFoundException('Report data not found');
+//     }
+
+//     if (!result.report.patient) {
+//       throw new NotFoundException('Patient data not found');
+//     }
+
+//     return {
+//       prediction: result.prediction,
+//       probability: result.probability,
+//       classification: result.classification,
+//       model: result.modelname,
+//       processedAt: result.processedat,
+
+//       patient: {
+//         patientid: result.report.patient.patientid,
+//         fullname: result.report.patient.fullname,
+//         email: result.report.patient.email,
+//       },
+
+//       report: {
+//         reportid: result.report.reportid,
+//         filename: result.report.filename,
+//         uploadedat: result.report.uploadedat,
+//       },
+//     };
+//   } catch (error) {
+//     // allow known HTTP errors to pass through
+//     if (
+//       error instanceof NotFoundException ||
+//       error instanceof BadRequestException
+//     ) {
+//       throw error;
+//     }
+
+//     console.error('Error fetching AI prediction:', error);
+
+//     throw new InternalServerErrorException(
+//       'Failed to fetch AI prediction result',
+//     );
+//   }
+// }
 
 
 
 
-// get Prediction result by report id
-async getPredictionByReportId(reportId: number) {
+async getPredictionByReportId(reportId: number, doctorId: number) {
   try {
-    // validate input
     if (!reportId || isNaN(reportId)) {
       throw new BadRequestException('Invalid report ID');
     }
@@ -263,40 +385,48 @@ async getPredictionByReportId(reportId: number) {
       throw new NotFoundException('Patient data not found');
     }
 
+    // ── Check: doctor is assigned to this patient ──
+    const assignment = await this.assignmentRepository.findOne({
+      where: {
+        doctor: { doctorid: doctorId },
+        patient: { patientid: result.report.patient.patientid },
+      },
+      relations: ['doctor', 'patient'],
+    });
+
+    if (!assignment) {
+      throw new BadRequestException(
+        'You are not authorized to access this report. Patient is not assigned to you.',
+      );
+    }
+
     return {
       prediction: result.prediction,
       probability: result.probability,
       classification: result.classification,
       model: result.modelname,
       processedAt: result.processedat,
-
       patient: {
         patientid: result.report.patient.patientid,
         fullname: result.report.patient.fullname,
         email: result.report.patient.email,
       },
-
       report: {
         reportid: result.report.reportid,
         filename: result.report.filename,
         uploadedat: result.report.uploadedat,
       },
     };
+
   } catch (error) {
-    // allow known HTTP errors to pass through
     if (
       error instanceof NotFoundException ||
       error instanceof BadRequestException
     ) {
       throw error;
     }
-
     console.error('Error fetching AI prediction:', error);
-
-    throw new InternalServerErrorException(
-      'Failed to fetch AI prediction result',
-    );
+    throw new InternalServerErrorException('Failed to fetch AI prediction result');
   }
 }
-
 }

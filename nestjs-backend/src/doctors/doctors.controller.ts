@@ -1,15 +1,18 @@
-import { Controller, Get, Param, Query, UseGuards, ParseIntPipe, Req, BadRequestException, Patch, Body } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards, ParseIntPipe, Req, BadRequestException, Patch, Body, Post } from '@nestjs/common';
 import { DoctorsService } from './doctors.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UpdateDoctorFcmTokenDto } from '../admin/dto/update-doctor-fcmtoken.dto';
+import { PredictionService } from 'src/prediction/prediction.service';
 
 @Roles('doctor')                        // ✅ lowercase matches JWT payload
 @UseGuards(JwtAuthGuard, RolesGuard)    // ✅ use JwtAuthGuard, not AuthGuard('jwt')
 @Controller('doctors')
 export class DoctorsController {
-  constructor(private readonly doctorsService: DoctorsService) {}
+  constructor(private readonly doctorsService: DoctorsService,
+              private readonly predictionService: PredictionService
+  ) {}
 
   // GET /doctors/:id/assigned-patients/details?severity=critical|moderate|normal|all
   @Get(':id/assigned-patients/details')
@@ -41,6 +44,23 @@ export class DoctorsController {
     return this.doctorsService.saveFcmToken(req.user.id, dto.fcmtoken);
   }
 
+// ── Prediction ─────────────────────────────────────────────────────────
+@Post('predict/:reportId')
+generatePrediction(
+  @Param('reportId', ParseIntPipe) reportId: number,
+  @Req() req: any,
+) {
+  const doctorId: number = req.user.id;
+  return this.predictionService.predictFromFeature(reportId, doctorId);
+}
 
+@Get('prediction/:reportId')
+getPrediction(
+  @Param('reportId', ParseIntPipe) reportId: number,
+  @Req() req: any,
+) {
+  const doctorId: number = req.user.id;
+  return this.predictionService.getPredictionByReportId(reportId, doctorId);
+}
 
 }

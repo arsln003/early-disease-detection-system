@@ -7,6 +7,9 @@ import { Radiologist } from 'src/entities/entities/Radiologist';
 import { OcrModule } from 'src/ocr/ocr.module';
 import { Feature } from 'src/entities/entities/Feature';
 import { Patient } from 'src/entities/entities/Patient';
+import { Assignment } from 'src/entities/entities/Assignment';
+import { Doctor } from 'src/entities/entities/Doctor';
+import { FirebaseService } from 'src/firebase/firebase.service';
 
 @Module({
    imports: [
@@ -15,11 +18,13 @@ import { Patient } from 'src/entities/entities/Patient';
       Radiologist,
       Feature,
       Patient,
+           Assignment, // ← add karo agar nahi hai
+      Doctor,  
     ]),
     OcrModule,
   ],
   controllers: [ReportsController],
-  providers: [ReportsService],
+  providers: [ReportsService, FirebaseService],
    exports: [ReportsService],
 })
 export class ReportsModule {}
