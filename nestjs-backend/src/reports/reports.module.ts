@@ -10,7 +10,8 @@ import { Patient } from 'src/entities/entities/Patient';
 import { Assignment } from 'src/entities/entities/Assignment';
 import { Doctor } from 'src/entities/entities/Doctor';
 import { FirebaseService } from 'src/firebase/firebase.service';
-
+import { CadicaResult } from 'src/entities/entities/CadicaResult';
+import { CadicaModule } from 'src/cadica/cadica.module';
 @Module({
    imports: [
     TypeOrmModule.forFeature([
@@ -20,8 +21,10 @@ import { FirebaseService } from 'src/firebase/firebase.service';
       Patient,
            Assignment, // ← add karo agar nahi hai
       Doctor,  
+       CadicaResult,
     ]),
     OcrModule,
+    CadicaModule,  // ← add karo
   ],
   controllers: [ReportsController],
   providers: [ReportsService, FirebaseService],

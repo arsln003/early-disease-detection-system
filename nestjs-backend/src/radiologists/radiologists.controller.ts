@@ -13,8 +13,9 @@ import {
   BadRequestException,
   UnauthorizedException,
   ParseIntPipe,
+  UploadedFiles,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 
 import { RadiologistService } from './radiologists.service';
@@ -101,27 +102,56 @@ getAllPatients() {
 
 
 
-  // ── Prediction ─────────────────────────────────────────────────────────
-  // @Post('predict/:reportId')
-  // generatePrediction(@Param('reportId', ParseIntPipe) reportId: number) {
-  //   return this.predictionService.predictFromFeature(reportId);
-  // }
 
-  // @Get('prediction/:reportId')
-  // getPrediction(@Param('reportId', ParseIntPipe) reportId: number) {
-  //   return this.predictionService.getPredictionByReportId(reportId);
-  // }
+// @Post('upload-cadica-video')
+// @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+// uploadCadicaVideoOnly(
+//   @UploadedFile() file: Express.Multer.File,
+//   @Req() req: any,
+//   @Body('patientId') patientId: string,
+//   @Body('comment') comment?: string,
+// ) {
+//   if (!file) {
+//     throw new BadRequestException('Video file is required');
+//   }
+
+//   const radiologistId: number = req.user.id;
+//   const parsedPatientId = Number(patientId);
+
+//   if (Number.isNaN(parsedPatientId)) {
+//     throw new BadRequestException('Valid patientId is required');
+//   }
+
+//   return this.radiologistService.uploadCadicaVideoOnly(
+//     radiologistId,
+//     parsedPatientId,
+//     file,
+//     comment,
+//   );
+// }
 
 
-//send report to doctor
-@Post('send-report/:reportId')
-sendReportToDoctor(
-  @Param('reportId', ParseIntPipe) reportId: number,
+@Post('patients/:patientId/upload-cadica-videos')
+@UseInterceptors(FilesInterceptor('files', 20, { storage: memoryStorage() }))
+uploadCadicaVideosForPatient(
+  @UploadedFiles() files: Express.Multer.File[],
   @Req() req: any,
+  @Param('patientId', ParseIntPipe) patientId: number,
   @Body('comment') comment?: string,
 ) {
+  if (!files || files.length === 0) {
+    throw new BadRequestException('At least one video file is required');
+  }
+
   const radiologistId: number = req.user.id;
-  return this.radiologistService.sendReportToDoctor(reportId, radiologistId, comment);
+
+  return this.radiologistService.uploadCadicaVideosOnly(
+    radiologistId,
+    patientId,
+    files,
+    comment,
+  );
 }
+
 
 }

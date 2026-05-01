@@ -1,89 +1,129 @@
 
 
-from fastapi import FastAPI, UploadFile, File
-from PIL import Image
-from pdf2image import convert_from_bytes
-import pytesseract
-import pdfplumber
-import cv2
-import numpy as np
-import re
-from io import BytesIO
+from fastapi import FastAPI,UploadFile, Query,File, HTTPException
+# from ocr_model import ocr
+# from cardio_model import predict, CardioInput
+# from cadica_model import cadica_predict
+# from fastapi import FastAPI, UploadFile, File
+# from PIL import Image
+# from pdf2image import convert_from_bytes
+from pydantic import BaseModel
+
+# import these AFTER app is defined — lazy loading
+from ocr_model import ocr
+from cardio_model import predict, CardioInput
+from cadica_model import cadica_predict
+from typing import List
+
+
+# # Define the request schema for CADICA
+# class CadicaRequest(BaseModel):
+#     save_gradcam: bool = False
+
 
 app = FastAPI()
 
-def preprocess_image(pil_img):
-    img = np.array(pil_img)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
-    return Image.fromarray(thresh)
+@app.get("/")
+def home():
+    return {"message": "Unified API is running"}
 
-def extract_fields(text):
-    
-    # Mapping OCR labels → dataset column names
-    field_map = {
-        "Age": "age",
-        "Gender": "gender",
-        "Height": "height",
-        "Weight": "weight",
-        "Systolic": "ap_hi",
-        "Diastolic": "ap_lo",
-        "Cholesterol": "cholesterol",
-        "Glucose": "gluc",
-        "Smoking": "smoke",
-        "Alcohol": "alco",
-        "Activity": "active",
-        "Cardio": "cardio"
+
+@app.post("/cadica/test")
+async def cadica_test(file: UploadFile = File(...)):
+    content = await file.read()
+    return {
+        "filename": file.filename,
+        "size_kb": len(content) / 1024,
+        "received": True
     }
 
-    fields = {}
 
-    for text_field, key in field_map.items():
-        pattern = rf"{text_field}\s*[:\t ]*\s*(\d+(?:[.,]\d+)?)"
-        match = re.search(pattern, text, re.IGNORECASE)
-
-        if match:
-            value = match.group(1).replace(',', '.')
-            
-            # float values
-            if key in ["weight"]:
-                fields[key] = float(value)
-            else:
-                fields[key] = int(float(value))
-        else:
-            fields[key] = None
-
-    return fields
-
-
+# OCR Model
 @app.post("/ocr")
-async def ocr(file: UploadFile = File(...)):
-    content = await file.read()
-    text = ""
-    config = r'--oem 3 --psm 6'
+async def ocr_endpoint(file: UploadFile):
+    return await ocr(file)
 
-    if file.filename.lower().endswith(".pdf"):
+# Cardiovascular Prediction Model
+@app.post("/predict")
+def cardio_predict(data: CardioInput):
+    return predict(data)
+
+# ── CADICA predict ────────────────────────────────────────────────────
+# @app.post("/cadica/predict")
+# async def cadica_predict_endpoint(
+#     file: UploadFile = File(...),
+#     save_gradcam: bool = False
+# ):
+#     video_bytes = await file.read()
+#     if not video_bytes:
+#         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+#     from cadica_model import cadica_predict   # lazy import — loads model on first call
+#     return cadica_predict(video_bytes, save_gradcam)
+
+
+@app.post("/cadica/predict")
+async def cadica_predict_endpoint(
+    files: List[UploadFile] = File(...),
+    save_gradcam: bool = False
+):
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded.")
+
+    from cadica_model import cadica_predict
+
+    results = []
+
+    for file in files:
+        video_bytes = await file.read()
+
+        if not video_bytes:
+            results.append({
+                "filename": file.filename,
+                "error": "Uploaded file is empty."
+            })
+            continue
+
         try:
-            with pdfplumber.open(BytesIO(content)) as pdf:
-                for page in pdf.pages:
-                    t = page.extract_text()
-                    if t:
-                        text += t + "\n"
-        except:
-            pass
+            result = cadica_predict(video_bytes, save_gradcam)
 
-        if not text.strip():
-            pages = convert_from_bytes(content, dpi=300)
-            for page in pages:
-                page = preprocess_image(page)
-                text += pytesseract.image_to_string(page, config=config)
+            results.append({
+                "filename": file.filename,
+                "result": result
+            })
 
-    else:
-        image = Image.open(BytesIO(content))
-        image = preprocess_image(image)
-        text = pytesseract.image_to_string(image, config=config)
+        except HTTPException as e:
+            results.append({
+                "filename": file.filename,
+                "error": e.detail
+            })
+
+        except Exception as e:
+            results.append({
+                "filename": file.filename,
+                "error": str(e)
+            })
 
     return {
-        "fields": extract_fields(text),
-        "raw_text": text
+        "total_files": len(files),
+        "results": results
     }
+
+
+# @app.post("/cadica/predict")
+# def cadica_predict_endpoint(
+#     patient:      str  = Query(...,       description="Patient ID e.g. p1"),
+#     save_gradcam: bool = Query(False,     description="Generate Grad-CAM figures"),
+# ):
+#     """
+#     Runs patient-level inference on all videos belonging to the given patient.
+#     The patient's videos must already exist inside the CADICA dataset folder.
+
+#     Steps:
+#       1. GET /cadica/patients  → pick a patient ID from the list
+#       2. POST /cadica/predict?patient=p1
+#     """
+#     return cadica_predict(patient, save_gradcam)
+
+
+

@@ -28,6 +28,8 @@ import { PredictionModule } from './prediction/prediction.module';
 //import { FirebaseModule } from './firebase/firebase.module';
 import { FirebaseModule } from './firebase/firebase.module';
 
+import { CadicaModule } from './cadica/cadica.module';
+
 
 
 @Module({
@@ -61,10 +63,12 @@ import { FirebaseModule } from './firebase/firebase.module';
     OcrModule,
     PredictionModule,
     FirebaseModule,
+    CadicaModule,
 
 
   ],
   controllers: [DoctornestController],
+  providers: [],
 })
 export class AppModule {}
 

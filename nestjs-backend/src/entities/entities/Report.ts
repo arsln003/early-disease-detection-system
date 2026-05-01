@@ -14,6 +14,7 @@ import { Feature } from "./Feature";
 import { Patient } from "./Patient";
 import { Radiologist } from "./Radiologist";
 
+
 @Index("report_pkey", ["reportid"], { unique: true })
 @Entity("report", { schema: "public" })
 export class Report {
@@ -55,4 +56,6 @@ export class Report {
 
   @OneToOne(() => AiResult, (aiResult) => aiResult.report)
   aiResult: AiResult;
+
+
 }

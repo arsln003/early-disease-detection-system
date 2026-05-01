@@ -16,7 +16,7 @@ export class OcrService {
       });
 
       const response = await axios.post(
-        'http://localhost:8001/ocr',
+        'http://localhost:8000/ocr',
         formData,
         {
           headers: {

@@ -9,6 +9,12 @@ import { Patient } from 'src/entities/entities/Patient';
 import { Assignment } from 'src/entities/entities/Assignment';
 import { Doctor } from 'src/entities/entities/Doctor';
 import { FirebaseService } from 'src/firebase/firebase.service';
+import {CadicaService} from 'src/cadica/cadica.service';
+import { CadicaResult } from 'src/entities/entities/CadicaResult';
+import * as fs from 'fs';
+import * as path from 'path';
+import { randomUUID } from 'crypto';
+
 
 @Injectable()
 export class ReportsService {
@@ -26,6 +32,11 @@ export class ReportsService {
   private readonly assignmentRepo: Repository<Assignment>,
   @InjectRepository(Doctor)
   private readonly doctorRepo: Repository<Doctor>,
+   @InjectRepository(CadicaResult)
+  private readonly cadicaResultRepository: Repository<CadicaResult>,
+
+  private readonly cadicaService: CadicaService
+  ,
   private readonly firebaseService: FirebaseService,
   ) {}
 
@@ -49,143 +60,6 @@ export class ReportsService {
 
 
 
-
-
-// //upload reports
-//   async uploadAndAnalyzeFile(
-//     radiologistId: number,
-//     patientId: number,
-//     file: Express.Multer.File,
-//     comment?: string,
-//   ) {
-//     if (!file) {
-//       throw new BadRequestException('File is required');
-//     }
-
-//     const allowedMimeTypes = [
-//       'application/pdf',
-//       'image/jpeg',
-//       'image/jpg',
-//       'image/png',
-//     ];
-
-//     const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
-//     const lowerName = file.originalname?.toLowerCase() || '';
-
-//     const hasValidExtension = allowedExtensions.some((ext) =>
-//       lowerName.endsWith(ext),
-//     );
-
-//     if (!allowedMimeTypes.includes(file.mimetype) || !hasValidExtension) {
-//       throw new BadRequestException(
-//         'Only PDF, JPG, JPEG, and PNG files are allowed',
-//       );
-//     }
-
-//     if (!file.originalname || file.originalname.trim().length === 0) {
-//       throw new BadRequestException('Invalid filename');
-//     }
-
-//     if (file.originalname.length > 255) {
-//       throw new BadRequestException(
-//         'Filename is too long. Maximum 255 characters allowed',
-//       );
-//     }
-
-//     if (!patientId || Number.isNaN(patientId)) {
-//       throw new BadRequestException('Valid patientId is required');
-//     }
-
-//     const radiologist = await this.radiologistRepository.findOne({
-//       where: { radiologistid: radiologistId },
-//     });
-
-//     if (!radiologist) {
-//       throw new NotFoundException('Radiologist not found');
-//     }
-
-//     const patient = await this.patientRepository.findOne({
-//       where: { patientid: patientId },
-//     });
-
-//     if (!patient) {
-//       throw new NotFoundException('Patient not found');
-//     }
-
-//     const report = this.reportsRepository.create({
-//       filename: file.originalname,
-//       filepath: file.originalname,
-//       comment: comment?.trim() || null,
-//       patient,
-//       radiologist,
-//     });
-
-//     const savedReport = await this.reportsRepository.save(report);
-
-//     const ocrResult = await this.ocrService.processFile(file);
-
-//     const feature = this.featureRepository.create({
-//   id_number: ocrResult.fields?.id_number ?? null,
-//   age: ocrResult.fields?.age ?? null,
-//   gender: ocrResult.fields?.gender ?? null,
-//   height: ocrResult.fields?.height ?? null,
-//   weight: ocrResult.fields?.weight ?? null,
-//   ap_hi: ocrResult.fields?.ap_hi ?? null,
-//   ap_lo: ocrResult.fields?.ap_lo ?? null,
-//   cholesterol: ocrResult.fields?.cholesterol ?? null,
-//   gluc: ocrResult.fields?.gluc ?? null,
-//   smoke: ocrResult.fields?.smoke ?? null,
-//   alco: ocrResult.fields?.alco ?? null,
-//   active: ocrResult.fields?.active ?? null,
-//   cardio: ocrResult.fields?.cardio ?? null,
-
-//   report: savedReport,
-// });
-
-//     const savedFeature = await this.featureRepository.save(feature);
-
-//   try {
-//   const assignments = await this.assignmentRepo.find({
-//     where: { patient: { patientid: patientId } },
-//     relations: ['doctor'],
-//     order: { assignmentid: 'DESC' },
-//   });
-
-//   const assignment = assignments[0];
-
-//   if (assignment?.doctor?.fcmtoken?.trim()) {
-//     const doctor = assignment.doctor;
-
-//     await this.firebaseService.sendReportToDoctor({
-//       fcmToken: doctor.fcmtoken,
-//       doctorName: doctor.fullname,
-//       patientName: patient.fullname,
-//       reportId: savedReport.reportid,
-//       radiologistName: radiologist.fullname,
-//       comment: savedReport.comment ?? '',
-//     });
-
-//     return {
-//       message: 'File processed, saved, and sent to doctor successfully',
-//       report: savedReport,
-//       feature: savedFeature,
-//       ocrResult,
-//       sentToDoctor: doctor.fullname,
-//     };
-//   }
-// } catch (error) {
-//   // Notification fail ho toh report toh save rehni chahiye
-//   console.error('Auto-send to doctor failed:', error?.message);
-// }
-
-// // Doctor na mile ya notification fail — still return success
-// return {
-//   message: 'File processed and saved successfully (doctor notification skipped)',
-//   report: savedReport,
-//   feature: savedFeature,
-//   ocrResult,
-// };
-//   }
 
 
 async uploadAndAnalyzeFile(
@@ -451,8 +325,5 @@ async getAllReports() {
     })),
   };
 }
-
-
-
 
 }

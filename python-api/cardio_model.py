@@ -1,9 +1,6 @@
-from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
 import pandas as pd
-
-app = FastAPI()
 
 # Load model and scaler
 model = joblib.load("best_cardiovascular_model.pkl")
@@ -11,35 +8,13 @@ scaler = joblib.load("scaler.pkl")
 
 # Exact feature order used during training
 FEATURE_ORDER = [
-    "age",
-    "gender",
-    "height",
-    "weight",
-    "ap_hi",
-    "ap_lo",
-    "cholesterol",
-    "gluc",
-    "smoke",
-    "alco",
-    "active",
-    "pulse_pressure",
-    "bmi",
-    "map",
-    "Lifestyle_Risk",
+    "age", "gender", "height", "weight", "ap_hi", "ap_lo", "cholesterol", "gluc", "smoke", "alco", "active", 
+    "pulse_pressure", "bmi", "map", "Lifestyle_Risk"
 ]
 
-# Columns that were scaled
 FEATURES_TO_SCALE = [
-    "age",
-    "height",
-    "weight",
-    "ap_hi",
-    "ap_lo",
-    "pulse_pressure",
-    "bmi",
-    "map",
+    "age", "height", "weight", "ap_hi", "ap_lo", "pulse_pressure", "bmi", "map",
 ]
-
 
 class CardioInput(BaseModel):
     age: int
@@ -54,13 +29,6 @@ class CardioInput(BaseModel):
     alco: int
     active: int
 
-
-@app.get("/")
-def home():
-    return {"message": "Prediction API is running"}
-
-
-@app.post("/predict")
 def predict(data: CardioInput):
     payload = data.dict()
 
@@ -68,9 +36,7 @@ def predict(data: CardioInput):
     payload["pulse_pressure"] = payload["ap_hi"] - payload["ap_lo"]
     payload["bmi"] = payload["weight"] / ((payload["height"] / 100) ** 2)
     payload["map"] = (2 * payload["ap_lo"] + payload["ap_hi"]) / 3
-    payload["Lifestyle_Risk"] = int(
-        -(payload["smoke"] * 0.5) - (payload["alco"] * 0.5) + (payload["active"] * 1)
-    )
+    payload["Lifestyle_Risk"] = int(-(payload["smoke"] * 0.5) - (payload["alco"] * 0.5) + (payload["active"] * 1))
 
     # DataFrame in exact model order
     df = pd.DataFrame([payload])
@@ -87,7 +53,4 @@ def predict(data: CardioInput):
     if hasattr(model, "predict_proba"):
         probability = float(model.predict_proba(df)[0][1])
 
-    return {
-        "prediction": prediction,
-        "probability": probability,
-    }
+    return {"prediction": prediction, "probability": probability}

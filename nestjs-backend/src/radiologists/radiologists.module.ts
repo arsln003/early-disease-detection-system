@@ -12,10 +12,10 @@ import { FirebaseModule } from 'src/firebase/firebase.module';
 import { Report } from 'src/entities/entities/Report';
 import { Assignment } from 'src/entities/entities/Assignment';
 import { Doctor } from 'src/entities/entities/Doctor';
-
-
+import { Patient } from 'src/entities/entities/Patient';
+import { CadicaVideoReport } from 'src/entities/entities/CadicaVideoReport';
 @Module({
-  imports: [TypeOrmModule.forFeature([Radiologist,Report,Assignment,Doctor]),  // ✅ add Doctor to TypeOrmModule
+  imports: [TypeOrmModule.forFeature([Radiologist,Report,Assignment,Doctor,Patient,CadicaVideoReport]),  // ✅ add Doctor and Patient to TypeOrmModule
    FirebaseModule,
   OcrModule, PatientsModule, ReportsModule, PredictionModule, AuthModule
   ],

@@ -5,13 +5,15 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UpdateDoctorFcmTokenDto } from '../admin/dto/update-doctor-fcmtoken.dto';
 import { PredictionService } from 'src/prediction/prediction.service';
-
+import { CadicaService } from 'src/cadica/cadica.service';
 @Roles('doctor')                        // ✅ lowercase matches JWT payload
 @UseGuards(JwtAuthGuard, RolesGuard)    // ✅ use JwtAuthGuard, not AuthGuard('jwt')
 @Controller('doctors')
 export class DoctorsController {
   constructor(private readonly doctorsService: DoctorsService,
-              private readonly predictionService: PredictionService
+              private readonly predictionService: PredictionService,
+                private readonly cadicaService: CadicaService,
+
   ) {}
 
   // GET /doctors/:id/assigned-patients/details?severity=critical|moderate|normal|all
@@ -62,5 +64,35 @@ getPrediction(
   const doctorId: number = req.user.id;
   return this.predictionService.getPredictionByReportId(reportId, doctorId);
 }
+
+
+//cadica video report prediction
+@Post('cadica-video-reports/:cadicaVideoReportId/predict')
+predictCadicaVideoReport(
+  @Req() req: any,
+  @Param('cadicaVideoReportId', ParseIntPipe) cadicaVideoReportId: number,
+) {
+  const doctorId: number = req.user.id;
+
+  return this.cadicaService.predictCadicaVideoReport(
+    doctorId,
+    cadicaVideoReportId,
+  );
+}
+
+//get cadica results
+@Get('cadica-video-reports/:cadicaVideoReportId/prediction')
+getCadicaPrediction(
+  @Req() req: any,
+  @Param('cadicaVideoReportId', ParseIntPipe) cadicaVideoReportId: number,
+) {
+  const doctorId: number = req.user.id;
+
+  return this.cadicaService.getCadicaPrediction(
+    doctorId,
+    cadicaVideoReportId,
+  );
+}
+
 
 }
