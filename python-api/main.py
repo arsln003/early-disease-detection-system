@@ -39,8 +39,12 @@ async def cadica_test(file: UploadFile = File(...)):
 
 
 # OCR Model
+# @app.post("/ocr")
+# async def ocr_endpoint(file: UploadFile):
+#     return await ocr(file)
+
 @app.post("/ocr")
-async def ocr_endpoint(file: UploadFile):
+async def ocr_endpoint(file: UploadFile = File(...)):
     return await ocr(file)
 
 # Cardiovascular Prediction Model
