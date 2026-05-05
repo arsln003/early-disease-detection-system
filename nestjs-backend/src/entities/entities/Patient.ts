@@ -10,7 +10,7 @@ import {
 import { Assignment } from "./Assignment";
 import { Admin } from "./Admin";
 import { Report } from "./Report";
-
+import { CadicaVideoReport } from './CadicaVideoReport';
 @Index("patient_pkey", ["patientid"], { unique: true })
 @Entity("patient", { schema: "public" })
 export class Patient {
@@ -56,4 +56,10 @@ email: string;
 
   @OneToMany(() => Report, (report) => report.patient)
   reports: Report[];
+
+
+  @OneToMany(() => CadicaVideoReport, (cadicaVideoReport) => cadicaVideoReport.patient)
+  cadicaVideoReports: CadicaVideoReport[]; // Define this relation
+
+
 }

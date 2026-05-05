@@ -25,11 +25,21 @@ export class PatientsService {
   ) {}
 
   // ---- GET ALL ----
-  findAllPatients(): Promise<Patient[]> {
-    return this.patientRepository.find({
-      relations: ['assignments', 'reports', 'createdby'], // optional
-    });
-  }
+findAllPatients(): Promise<Patient[]> {
+  return this.patientRepository.find({
+    relations: [
+      'assignments',         // Get related assignments for each patient
+      'assignments.doctor',  // Get doctor details for each assignment
+      'assignments.assignedby', // Get admin details (who assigned)
+      'reports',             // Get reports for the patient
+      'reports.radiologist', // Get radiologist details for each report
+      'cadicaVideoReports',  // Get related cadica video reports
+      'cadicaVideoReports.cadicaResult', // Get cadica result details
+    ], 
+  });
+}
+
+
 
 
 // async createPatient(patientData: CreatePatientDto): Promise<Patient> {
