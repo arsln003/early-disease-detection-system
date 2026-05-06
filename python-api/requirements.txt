@@ -19,3 +19,5 @@ matplotlib
 pydantic
 joblib
 pandas
+xgboost
+scikit-learn
