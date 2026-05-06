@@ -53,7 +53,7 @@ import cv2
 import tempfile
 import shutil
 import numpy as np
-from THIRD_MODEL_V2 import run_patient_inference
+from third_model_v2 import run_patient_inference
 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "third_best_model_v1.pth")
