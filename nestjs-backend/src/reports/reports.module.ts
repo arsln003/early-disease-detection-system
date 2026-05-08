@@ -12,6 +12,8 @@ import { Doctor } from 'src/entities/entities/Doctor';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { CadicaResult } from 'src/entities/entities/CadicaResult';
 import { CadicaModule } from 'src/cadica/cadica.module';
+import { HttpModule } from '@nestjs/axios';
+import { AiResult } from 'src/entities/entities/AiResult';
 @Module({
    imports: [
     TypeOrmModule.forFeature([
@@ -22,9 +24,11 @@ import { CadicaModule } from 'src/cadica/cadica.module';
            Assignment, // ← add karo agar nahi hai
       Doctor,  
        CadicaResult,
+         AiResult,  // ← add karo agar nahi hai
     ]),
     OcrModule,
     CadicaModule,  // ← add karo
+    HttpModule,
   ],
   controllers: [ReportsController],
   providers: [ReportsService, FirebaseService],

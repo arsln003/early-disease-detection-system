@@ -15,42 +15,41 @@ export class Feature {
   @Column({ nullable: true })
   id_number: number;
 
-  @Column({ nullable: true })
-  age: number;
+ @Column({ type: 'float', nullable: true })
+age: number | null;
 
-  @Column({ nullable: true })
-  gender: number;
+@Column({ type: 'float', nullable: true })
+gender: number | null;
 
-  @Column({ nullable: true })
-  height: number;
+@Column({ type: 'float', nullable: true })
+height: number | null;
 
-  @Column('float', { nullable: true })
-  weight: number;
+@Column({ type: 'float', nullable: true })
+weight: number | null;
 
-  @Column({ nullable: true })
-  ap_hi: number;
+@Column({ type: 'float', nullable: true })
+ap_hi: number | null;
 
-  @Column({ nullable: true })
-  ap_lo: number;
+@Column({ type: 'float', nullable: true })
+ap_lo: number | null;
 
-  @Column({ nullable: true })
-  cholesterol: number;
+@Column({ type: 'float', nullable: true })
+cholesterol: number | null;
 
-  @Column({ nullable: true })
-  gluc: number;
+@Column({ type: 'float', nullable: true })
+gluc: number | null;
 
-  @Column({ nullable: true })
-  smoke: number;
+@Column({ type: 'float', nullable: true })
+smoke: number | null;
 
-  // NEW FEATURES
-  @Column({ nullable: true })
-  alco: number;
+@Column({ type: 'float', nullable: true })
+alco: number | null;
 
-  @Column({ nullable: true })
-  active: number;
+@Column({ type: 'float', nullable: true })
+active: number | null;
 
-  @Column({ nullable: true })
-  cardio: number;
+@Column({ type: 'float', nullable: true })
+cardio: number | null;
 
   @OneToOne(() => Report, (report) => report.feature, {
     onDelete: 'CASCADE',

@@ -26,15 +26,15 @@ export class FirebaseService implements OnModuleInit {
     const message: admin.messaging.Message = {
       token: payload.fcmToken,
       notification: {
-        title: '🩻 New Report Assigned',
-        body: `Report for ${payload.patientName} sent by Dr. ${payload.radiologistName}`,
+       title: '🩻 New Report & Prediction Ready',
+  body: `Report and AI prediction for ${payload.patientName} are ready.`,
       },
       data: {
         reportId: String(payload.reportId),
         patientName: payload.patientName,
         radiologistName: payload.radiologistName,
         comment: payload.comment ?? '',
-        type: 'REPORT_SENT',
+        type: 'REPORT_PREDICTED',
       },
     };
 

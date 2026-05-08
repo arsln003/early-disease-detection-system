@@ -19,7 +19,7 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 
 import { RadiologistService } from './radiologists.service';
-import { ReportsService } from 'src/reports/reports.service';
+import { ReportsService, UploadAnalyzeResponse } from 'src/reports/reports.service'; 
 import { PredictionService } from 'src/prediction/prediction.service';
 
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';      // ✅ correct import
@@ -55,7 +55,7 @@ export class RadiologistController {
     @Req() req: any,
     @Body('patientId') patientId: string,
     @Body('comment') comment?: string,
-  ) {
+  ): Promise<UploadAnalyzeResponse> {
     if (!file) {
       throw new BadRequestException('File is required');
     }
@@ -74,7 +74,6 @@ export class RadiologistController {
       comment,
     );
   }
-
   // ── Reports ────────────────────────────────────────────────────────────
   @Get('reports/:patientId')
   getReportsByPatientId(

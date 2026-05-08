@@ -79,7 +79,6 @@ def extract_text_from_pdf(content: bytes):
 
     return text
 
-
 def extract_with_gemini(raw_text: str):
     prompt = f"""
 You are a strict medical report data extraction engine.
@@ -108,214 +107,111 @@ Do not add explanation.
 Do not add markdown.
 Return only valid JSON.
 
-FIELD MEANINGS AND POSSIBLE REPORT LABELS:
+YOUR ONLY JOB:
+Find each field's label in the text. If found, extract its value.
+If not found, return null. That is all. Nothing else.
+Do NOT think. Do NOT infer. Do NOT complete missing data.
+Do NOT use medical knowledge to fill gaps.
+You are a text scanner, not a doctor.
+
+ABSOLUTE RULES — NEVER BREAK THESE:
+- null means the label was not found in the text. Nothing else.
+- A missing field is always null. Never 0, never 1, never any default.
+- Do NOT infer any field from any other field.
+- Do NOT use medical logic (e.g. high BP does not mean cardio = 1).
+- Do NOT assume lifestyle habits from demographics.
+- Do NOT fill a field just because it would "make sense" medically.
+- Each field lives or dies by its own label being present in the text.
+- If you are even 1% unsure — return null.
+
+FIELD DEFINITIONS:
 
 1. age
-Possible labels:
-- Age
-- Patient Age
-- Years
-- Age in years
-
-Return numeric age only.
+Labels: Age, Patient Age, Years, Age in years
+Return numeric age in years.
 Example: "45 years" -> 45
+Label not in text -> null
 
 2. gender
-Possible labels:
-- Gender
-- Sex
-- Male/Female
-- M/F
-
-Return:
-- 1 for Male / M
-- 2 for Female / F
-- null if not clear
+Labels: Gender, Sex, Male, Female, M, F, Man, Woman
+Return: 1 for Female/F/Woman, 2 for Male/M/Man
+Label not in text -> null
 
 3. height
-Possible labels:
-- Height
-- Patient Height
-- Height cm
-- Stature
-
-Return height in centimeters as a number.
-Examples:
-- "170 cm" -> 170
-- "1.70 m" -> 170
-- "5 ft 7 in" -> 170 approximately only if clearly written
+Labels: Height, Patient Height, Height cm, Stature
+Return centimeters as number. "1.70 m" -> 170, "5ft 7in" -> 170
+Label not in text -> null
 
 4. weight
-Possible labels:
-- Weight
-- Patient Weight
-- Body Weight
-- Weight kg
-
-Return weight in kilograms as a number.
-Examples:
-- "78.5 kg" -> 78.5
-- "78 kg" -> 78
+Labels: Weight, Patient Weight, Body Weight, Weight kg
+Return kilograms as decimal. "78.5 kg" -> 78.5
+Label not in text -> null
 
 5. ap_hi
-This means systolic blood pressure.
-Possible labels:
-- Systolic
-- Systolic BP
-- Systolic Blood Pressure
-- Upper BP
-- High BP
-- BP Systolic
-- Blood Pressure Systolic
-- BP: 120/80, where 120 is ap_hi
-
-Return numeric systolic value only.
-Example:
-- "Systolic: 120" -> 120
-- "BP: 120/80" -> 120
+Labels: Systolic, Systolic BP, Systolic Blood Pressure, Upper BP, BP Systolic
+Also: "BP: 120/80" -> 120 is ap_hi
+Return numeric value only.
+Label not in text -> null
 
 6. ap_lo
-This means diastolic blood pressure.
-Possible labels:
-- Diastolic
-- Diastolic BP
-- Diastolic Blood Pressure
-- Lower BP
-- Low BP
-- BP Diastolic
-- Blood Pressure Diastolic
-- BP: 120/80, where 80 is ap_lo
-
-Return numeric diastolic value only.
-Example:
-- "Diastolic: 80" -> 80
-- "BP: 120/80" -> 80
+Labels: Diastolic, Diastolic BP, Diastolic Blood Pressure, Lower BP, BP Diastolic
+Also: "BP: 120/80" -> 80 is ap_lo
+Return numeric value only.
+Label not in text -> null
 
 7. cholesterol
-Possible labels:
-- Cholesterol
-- Cholesterol Level
-- Serum Cholesterol
-- Total Cholesterol
-- Lipid Level
-- Lipid Profile
-
-Return:
-- 1 for normal
-- 2 for above normal / borderline / slightly high / elevated
-- 3 for well above normal / high / very high
-- numeric value if the report clearly gives a numeric cholesterol value
-- null if missing or unclear
-
-Examples:
-- "Cholesterol: Normal" -> 1
-- "Cholesterol: Above Normal" -> 2
-- "Cholesterol: High" -> 3
-- "Total Cholesterol: 220" -> 220
+Labels: Cholesterol, Cholesterol Level, Serum Cholesterol, Total Cholesterol, Lipid Level, Lipid Profile
+Return ONLY 1, 2, or 3:
+- 1 = normal / within range / desirable
+- 2 = above normal / borderline / slightly high / elevated
+- 3 = well above normal / high / very high
+If numeric mg/dL: below 200 -> 1, 200-239 -> 2, 240+ -> 3
+Label not in text -> null
 
 8. gluc
-This means glucose.
-Possible labels:
-- Glucose
-- Blood Glucose
-- Sugar
-- Sugar Level
-- Blood Sugar
-- Fasting Glucose
-- Random Blood Sugar
-- RBS
-- FBS
-
-Return:
-- 1 for normal
-- 2 for above normal / borderline / slightly high / elevated
-- 3 for well above normal / high / very high
-- numeric value if the report clearly gives a numeric glucose value
-- null if missing or unclear
-
-Examples:
-- "Glucose: Normal" -> 1
-- "Blood Sugar: High" -> 3
-- "Fasting Glucose: 110" -> 110
+Labels: Glucose, Blood Glucose, Sugar, Sugar Level, Blood Sugar, Fasting Glucose, RBS, FBS
+Return ONLY 1, 2, or 3:
+- 1 = normal / within range
+- 2 = above normal / borderline / slightly high / elevated
+- 3 = well above normal / high / very high
+If numeric mg/dL: below 100 -> 1, 100-125 -> 2, 126+ -> 3
+Label not in text -> null
 
 9. smoke
-Possible labels:
-- Smoking
-- Smoking Status
-- Smoker
-- Tobacco Use
-- Cigarette Use
-
-Return:
-- 1 for yes / smoker / current smoker / tobacco user
-- 0 for no / non-smoker / never smoker / does not smoke
-- null if missing or unclear
+Labels: Smoking, Smoking Status, Smoker, Tobacco Use, Cigarette Use
+Return: 1 = smoker, 0 = non-smoker
+Label not in text -> null
 
 10. alco
-This means alcohol intake.
-Possible labels:
-- Alcohol
-- Alcohol Intake
-- Drinking
-- Alcohol Use
-- Drinks Alcohol
-
-Return:
-- 1 for yes / drinks alcohol / alcohol user
-- 0 for no / does not drink / non-alcoholic
-- null if missing or unclear
+Labels: Alcohol, Alcohol Intake, Drinking, Alcohol Use, Drinks Alcohol
+Return: 1 = drinks, 0 = does not drink
+Label not in text -> null
 
 11. active
-This means physical activity.
-Possible labels:
-- Activity
-- Physical Activity
-- Exercise
-- Active
-- Active Lifestyle
-- Regular Exercise
-
-Return:
-- 1 for yes / active / physically active / exercises regularly
-- 0 for no / inactive / sedentary / no exercise
-- null if missing or unclear
+Labels: Activity, Physical Activity, Exercise, Active, Active Lifestyle, Regular Exercise
+Return: 1 = active, 0 = inactive
+Label not in text -> null
 
 12. cardio
-This means cardiovascular disease / heart disease status.
-Possible labels:
-- Cardio
-- Cardiovascular Disease
-- Heart Disease
-- Cardiac Disease
-- Cardiac History
-- CVD
-- Heart Problem
+Labels: Cardio, Cardiovascular Disease, Heart Disease, Cardiac Disease, Cardiac History, CVD, Heart Problem
+Return: 1 = diagnosed/present, 0 = no history/absent
+Label not in text -> null
 
-Return:
-- 1 for yes / present / positive / diagnosed / history of heart disease
-- 0 for no / absent / negative / no history
-- null if missing or unclear
+BEFORE YOU RESPOND — CHECK EACH FIELD:
+Ask yourself for every single field:
+"Did I physically see this field's label in the report text?"
+- YES, I saw the label -> extract value
+- NO, I did not see the label -> null
 
-IMPORTANT EXTRACTION RULES:
-
-1. Extract values only from the report text.
-2. Do not guess values.
-3. If a field is not found, return null.
-4. If OCR text contains spelling mistakes, infer the field label only when the meaning is clearly obvious.
-5. If two values conflict, choose the value closest to the correct field label.
-6. If BP is written as "120/80", map 120 to ap_hi and 80 to ap_lo.
-7. Do not confuse pulse/heart rate with blood pressure.
-8. Do not confuse cholesterol with glucose.
-9. Do not confuse activity with cardiac activity.
-10. Do not return units like kg, cm, mmHg, years.
-11. Return numbers as JSON numbers, not strings.
-12. Return yes/no fields as 1 or 0, not "yes" or "no".
-13. Gender must be returned as 1 for male and 2 for female.
-14. The final response must be valid JSON only.
+There is no third option.
+Seeing high blood pressure does NOT mean you saw "cardio".
+Seeing age/gender does NOT mean you saw "smoking".
+Every field needs its OWN label. Period.
 
 OCR REPORT TEXT:
 \"\"\"
 {raw_text}
+\"\"\"
 """
 
     response = client.models.generate_content(
@@ -324,7 +220,6 @@ OCR REPORT TEXT:
     )
 
     return clean_json_response(response.text)
-
 
 async def ocr(file: UploadFile = File(...)):
     # Sirf PDF allow karo

@@ -47,14 +47,14 @@ export class DoctorsController {
   }
 
 // ── Prediction ─────────────────────────────────────────────────────────
-@Post('predict/:reportId')
-generatePrediction(
-  @Param('reportId', ParseIntPipe) reportId: number,
-  @Req() req: any,
-) {
-  const doctorId: number = req.user.id;
-  return this.predictionService.predictFromFeature(reportId, doctorId);
-}
+// @Post('predict/:reportId')
+// generatePrediction(
+//   @Param('reportId', ParseIntPipe) reportId: number,
+//   @Req() req: any,
+// ) {
+//   const doctorId: number = req.user.id;
+//   return this.predictionService.predictFromFeature(reportId, doctorId);
+// }
 
 @Get('prediction/:reportId')
 getPrediction(
