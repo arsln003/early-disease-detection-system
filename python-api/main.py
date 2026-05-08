@@ -1,117 +1,99 @@
-
-
-from fastapi import FastAPI,UploadFile, Query,File, HTTPException
-# from ocr_model import ocr
-# from cardio_model import predict, CardioInput
-# from cadica_model import cadica_predict
-# from fastapi import FastAPI, UploadFile, File
-# from PIL import Image
-# from pdf2image import convert_from_bytes
-from pydantic import BaseModel
-
-# import these AFTER app is defined — lazy loading
-from ocr_model import ocr
-from cardio_model import predict, CardioInput
-from cadica_model import cadica_predict
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List
+import os
 
+app = FastAPI(title="Unified Early Disease Detection API")
 
-# # Define the request schema for CADICA
-# class CadicaRequest(BaseModel):
-#     save_gradcam: bool = False
+# ── CORS ─────────────────────────────────────────────────────────────
+# Testing ke liye "*" okay hai. Production me specific frontend/backend URLs add karna.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+# ── Base/static output folder ────────────────────────────────────────
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "patient_output")
 
-app = FastAPI()
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+app.mount(
+    "/patient_output",
+    StaticFiles(directory=OUTPUT_DIR),
+    name="patient_output"
+)
+
 
 @app.get("/")
 def home():
-    return {"message": "Unified API is running"}
-
-
-@app.post("/cadica/test")
-async def cadica_test(file: UploadFile = File(...)):
-    content = await file.read()
     return {
-        "filename": file.filename,
-        "size_kb": len(content) / 1024,
-        "received": True
+        "message": "Unified API is running",
+        "services": ["ocr", "cardio", "cadica"]
     }
 
 
-# OCR Model
-# @app.post("/ocr")
-# async def ocr_endpoint(file: UploadFile):
-#     return await ocr(file)
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
+
+# ── OCR Model ────────────────────────────────────────────────────────
 @app.post("/ocr")
 async def ocr_endpoint(file: UploadFile = File(...)):
+    from ocr_model import ocr
+
     return await ocr(file)
 
-# Cardiovascular Prediction Model
+
+# ── Cardiovascular Prediction Model ──────────────────────────────────
 @app.post("/predict")
-def cardio_predict(data: CardioInput):
-    return predict(data)
+def cardio_predict(data: dict):
+    from cardio_model import predict, CardioInput
 
-# ── CADICA predict ────────────────────────────────────────────────────
-# @app.post("/cadica/predict")
-# async def cadica_predict_endpoint(
-#     file: UploadFile = File(...),
-#     save_gradcam: bool = False
-# ):
-#     video_bytes = await file.read()
-#     if not video_bytes:
-#         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-
-#     from cadica_model import cadica_predict   # lazy import — loads model on first call
-#     return cadica_predict(video_bytes, save_gradcam)
+    cardio_input = CardioInput(**data)
+    return predict(cardio_input)
 
 
+# ── CADICA Predict ───────────────────────────────────────────────────
 @app.post("/cadica/predict")
 async def cadica_predict_endpoint(
     files: List[UploadFile] = File(...),
-    save_gradcam: bool = False
+    save_gradcam: bool = False,
+    report_id: int | None = None,
 ):
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded.")
 
-    from cadica_model import cadica_predict
+    from cadica_model import cadica_predict_multiple
 
-    results = []
+    video_files = []
 
     for file in files:
         video_bytes = await file.read()
 
         if not video_bytes:
-            results.append({
-                "filename": file.filename,
-                "error": "Uploaded file is empty."
-            })
-            continue
+            raise HTTPException(
+                status_code=400,
+                detail=f"Uploaded file is empty: {file.filename}"
+            )
 
-        try:
-            result = cadica_predict(video_bytes, save_gradcam)
+        video_files.append({
+            "filename": file.filename,
+            "bytes": video_bytes
+        })
 
-            results.append({
-                "filename": file.filename,
-                "result": result
-            })
+    result = cadica_predict_multiple(
+        video_files=video_files,
+        save_gradcam=save_gradcam,
+        report_id=report_id
+    )
 
-        except HTTPException as e:
-            results.append({
-                "filename": file.filename,
-                "error": e.detail
-            })
-
-        except Exception as e:
-            results.append({
-                "filename": file.filename,
-                "error": str(e)
-            })
-
-    return {
-        "total_files": len(files),
-        "results": results
-    }
+    return result
 
 
 # @app.post("/cadica/predict")

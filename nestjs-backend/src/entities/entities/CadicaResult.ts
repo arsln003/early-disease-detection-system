@@ -65,6 +65,31 @@ export class CadicaResult {
   })
   rawResult: string | null;
 
+@Column('text', {
+  name: 'summary_image',
+  nullable: true,
+})
+summaryImage: string | null;
+
+@Column('text', {
+  name: 'summary_image_url',
+  nullable: true,
+})
+summaryImageUrl: string | null;
+
+@Column('jsonb', {
+  name: 'gradcam_images',
+  nullable: true,
+})
+gradcamImages: any[] | null;
+
+@Column('jsonb', {
+  name: 'per_video',
+  nullable: true,
+})
+perVideo: any[] | null;
+
+
   @Column('character varying', {
     name: 'modelname',
     nullable: true,

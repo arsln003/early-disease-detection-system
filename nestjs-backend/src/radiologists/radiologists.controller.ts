@@ -103,33 +103,6 @@ getAllPatients() {
 
 
 
-// @Post('upload-cadica-video')
-// @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
-// uploadCadicaVideoOnly(
-//   @UploadedFile() file: Express.Multer.File,
-//   @Req() req: any,
-//   @Body('patientId') patientId: string,
-//   @Body('comment') comment?: string,
-// ) {
-//   if (!file) {
-//     throw new BadRequestException('Video file is required');
-//   }
-
-//   const radiologistId: number = req.user.id;
-//   const parsedPatientId = Number(patientId);
-
-//   if (Number.isNaN(parsedPatientId)) {
-//     throw new BadRequestException('Valid patientId is required');
-//   }
-
-//   return this.radiologistService.uploadCadicaVideoOnly(
-//     radiologistId,
-//     parsedPatientId,
-//     file,
-//     comment,
-//   );
-// }
-
 
 @Post('patients/:patientId/upload-cadica-videos')
 @UseInterceptors(FilesInterceptor('files', 20, { storage: memoryStorage() }))
