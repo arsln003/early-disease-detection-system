@@ -30,6 +30,8 @@ import { PatientsService } from 'src/patients/patients.service';
 import { FirebaseService } from 'src/firebase/firebase.service'; 
 import { CadicaService } from 'src/cadica/cadica.service';
 import { StrokeService } from 'src/stroke/stroke.service';
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
+
 @Roles('radiologist')                        // ✅ lowercase
 @UseGuards(JwtAuthGuard, RolesGuard)         // ✅ JwtAuthGuard not AuthGuard('jwt')
 @Controller('radiologists')
@@ -40,6 +42,7 @@ export class RadiologistController {
     private readonly predictionService: PredictionService,
      private readonly patientsService: PatientsService,
  private readonly cadicaService: CadicaService,
+    private readonly cloudinaryService: CloudinaryService,
  private readonly strokeService: StrokeService,
   ) {}
 
@@ -137,8 +140,6 @@ async getAllPatients() {
 
 
 
-
-
 @Post('patients/:patientId/upload-cadica-videos')
 @UseInterceptors(FilesInterceptor('files', 20, { storage: memoryStorage() }))
 uploadCadicaVideosForPatient(
@@ -161,27 +162,63 @@ uploadCadicaVideosForPatient(
   );
 }
 
-// stroke img
-@Post('patients/:patientId/upload-stroke-image')
-@UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
-uploadStrokeImageForPatient(
-  @UploadedFile() file: Express.Multer.File,
-  @Req() req: any,
-  @Param('patientId', ParseIntPipe) patientId: number,
-  @Body('comment') comment?: string,
-) {
-  if (!file) {
-    throw new BadRequestException('Stroke CT image is required');
+
+
+  /**
+   * POST /radiologist/patients/:patientId/upload-stroke-image
+   *
+   * Steps:
+   *  1. Validate file presence + MIME type
+   *  2. Upload raw CT image to Cloudinary (stroke_inputs folder)
+   *  3. Pass Cloudinary URL to StrokeService for prediction
+   */
+  @Post('patients/:patientId/upload-stroke-image')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB max
+    }),
+  )
+  async uploadStrokeImageForPatient(
+    @UploadedFile() file: Express.Multer.File,
+    @Param('patientId') patientId: number,
+    @Req() req: any,
+    @Body('comment') comment: string,
+  ) {
+    // ── Validate file ────────────────────────────────────────────────────────
+    if (!file) {
+      throw new BadRequestException('Stroke CT image is required');
+    }
+ 
+    const allowedMimeTypes  = ['image/png', 'image/jpeg', 'image/jpg'];
+    const allowedExtensions = ['.png', '.jpg', '.jpeg'];
+    const lowerName         = file.originalname?.toLowerCase() ?? '';
+ 
+    const hasValidExtension = allowedExtensions.some((ext) =>
+      lowerName.endsWith(ext),
+    );
+ 
+    if (!allowedMimeTypes.includes(file.mimetype) || !hasValidExtension) {
+      throw new BadRequestException(
+        'Only PNG, JPG, and JPEG CT images are allowed',
+      );
+    }
+ 
+    // ── Upload input CT image to Cloudinary ──────────────────────────────────
+    const radiologistId = req.user.id;
+ 
+    const cloudinaryUrl = await this.cloudinaryService.uploadImage(
+      file.buffer,
+      `stroke_input_${radiologistId}_${Date.now()}`,
+      'stroke_inputs',
+    );
+ 
+    // ── Run prediction (Python API) + save results ───────────────────────────
+    return this.strokeService.uploadStrokeImageAndPredict(
+      radiologistId,
+      patientId,
+      cloudinaryUrl,
+      comment,
+    );
   }
-
-  const radiologistId: number = req.user.id;
-
-  return this.strokeService.uploadStrokeImageAndPredict(
-    radiologistId,
-    patientId,
-    file,
-    comment,
-  );
-}
 
 }

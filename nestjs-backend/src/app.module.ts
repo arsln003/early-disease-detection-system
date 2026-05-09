@@ -30,6 +30,8 @@ import { FirebaseModule } from './firebase/firebase.module';
 
 import { CadicaModule } from './cadica/cadica.module';
 import { StrokeModule } from './stroke/stroke.module';
+import { CloudinaryService } from './cloudinary/cloudinary.service';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 
 
 
@@ -66,12 +68,12 @@ import { StrokeModule } from './stroke/stroke.module';
     FirebaseModule,
     CadicaModule,
     StrokeModule,
+    CloudinaryModule,
 
 
   ],
   controllers: [DoctornestController],
-  providers: [],
+  providers: [CloudinaryService],
 })
 export class AppModule {}
-
 
