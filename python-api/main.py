@@ -41,9 +41,10 @@ app.mount(
 @app.get("/")
 def home():
     return {
-        "message": "Unified API is running",
-        "services": ["ocr", "cardio", "cadica"]
+        "message": "Unified API is running successfully!",
+        "services": ["ocr", "cardio", "cadica", "stroke"]
     }
+
 
 
 @app.get("/health")
