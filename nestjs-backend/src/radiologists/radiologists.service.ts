@@ -15,7 +15,7 @@ import {CadicaVideoReport} from 'src/entities/entities/CadicaVideoReport';
 import * as fs from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
-
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 @Injectable()
 export class RadiologistService {
   constructor(
@@ -35,6 +35,7 @@ export class RadiologistService {
   private readonly doctorRepo: Repository<Doctor>, // 👈 ADD THIS
 @InjectRepository(CadicaVideoReport)
 private readonly cadicaVideoReportRepository: Repository<CadicaVideoReport>,
+private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   // ---- GET ALL ----
@@ -232,6 +233,8 @@ async sendReportToDoctor(
   }
 }
 
+// radiologist.service.ts — uploadCadicaVideosOnly method
+// Replace your existing uploadCadicaVideosOnly with this
 
 async uploadCadicaVideosOnly(
   radiologistId: number,
@@ -250,86 +253,62 @@ async uploadCadicaVideosOnly(
   const radiologist = await this.radiologistRepository.findOne({
     where: { radiologistid: radiologistId },
   });
-
-  if (!radiologist) {
-    throw new NotFoundException('Radiologist not found');
-  }
+  if (!radiologist) throw new NotFoundException('Radiologist not found');
 
   const patient = await this.patientRepository.findOne({
     where: { patientid: patientId },
   });
+  if (!patient) throw new NotFoundException('Patient not found');
 
-  if (!patient) {
-    throw new NotFoundException('Patient not found');
-  }
-
-  const allowedMimeTypes = [
-    'video/mp4',
-    'video/avi',
-    'video/x-msvideo',
-    'video/quicktime',
-  ];
-
+  const allowedMimeTypes  = ['video/mp4', 'video/avi', 'video/x-msvideo', 'video/quicktime'];
   const allowedExtensions = ['.mp4', '.avi', '.mov'];
 
-  const uploadDir = path.join(process.cwd(), 'uploads', 'cadica');
-
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
+  // ✅ Upload each valid video to Cloudinary — no local disk writes
   const videos: {
     filename: string;
-    filepath: string;
+    filepath: string;  // Cloudinary URL
     mimetype: string;
-    size: number;
+    size:     number;
   }[] = [];
 
   const failedFiles: { filename: string; error: string }[] = [];
 
   for (const file of files) {
     try {
-      const lowerName = file.originalname?.toLowerCase() || '';
-
-      const hasValidExtension = allowedExtensions.some((ext) =>
-        lowerName.endsWith(ext),
-      );
+      const lowerName         = file.originalname?.toLowerCase() ?? '';
+      const hasValidExtension = allowedExtensions.some((ext) => lowerName.endsWith(ext));
 
       if (!allowedMimeTypes.includes(file.mimetype) || !hasValidExtension) {
         failedFiles.push({
           filename: file.originalname,
-          error: 'Only MP4, AVI, and MOV videos are allowed',
+          error:    'Only MP4, AVI, and MOV videos are allowed',
         });
         continue;
       }
 
-      const fileExt = path.extname(file.originalname);
-      const safeFilename = `${randomUUID()}${fileExt}`;
-
-      const relativeFilePath = path.join('uploads', 'cadica', safeFilename);
-      const absoluteFilePath = path.join(process.cwd(), relativeFilePath);
-
-      fs.writeFileSync(absoluteFilePath, file.buffer);
+      // ✅ Upload to Cloudinary instead of saving to disk
+      const cloudinaryUrl = await this.cloudinaryService.uploadVideo(
+        file.buffer,
+        `cadica_video_${radiologistId}_${Date.now()}_${videos.length + 1}`,
+      );
 
       videos.push({
         filename: file.originalname,
-        filepath: relativeFilePath,
+        filepath: cloudinaryUrl,  // ✅ Cloudinary URL stored
         mimetype: file.mimetype,
-        size: file.size,
+        size:     file.size,
       });
+
     } catch (error) {
       failedFiles.push({
         filename: file.originalname,
-        error: error?.message || 'Upload failed',
+        error:    error?.message || 'Upload failed',
       });
     }
   }
 
   if (videos.length === 0) {
-    throw new BadRequestException({
-      message: 'No valid videos uploaded',
-      failedFiles,
-    });
+    throw new BadRequestException({ message: 'No valid videos uploaded', failedFiles });
   }
 
   const cadicaVideoReport = this.cadicaVideoReportRepository.create({
@@ -337,47 +316,43 @@ async uploadCadicaVideosOnly(
     radiologist,
     videos,
     comment: comment?.trim() || null,
-    status: 'PENDING',
+    status:  'PENDING',
   });
 
   const savedCadicaVideoReport =
     await this.cadicaVideoReportRepository.save(cadicaVideoReport);
 
+  // ── Notify doctor via FCM ──────────────────────────────────────────────────
   const assignments = await this.assignmentRepo.find({
-    where: { patient: { patientid: patientId } },
+    where:     { patient: { patientid: patientId } },
     relations: ['doctor'],
-    order: { assignmentid: 'DESC' },
+    order:     { assignmentid: 'DESC' },
   });
 
-  const assignment = assignments[0];
+  const doctor = assignments[0]?.doctor;
 
-  if (!assignment || !assignment.doctor) {
+  if (!doctor) {
     return {
-      message: 'CADICA video report uploaded successfully',
+      message:           'CADICA video report uploaded successfully',
       patientId,
-      totalUploaded: videos.length,
-      totalFailed: failedFiles.length,
+      totalUploaded:     videos.length,
+      totalFailed:       failedFiles.length,
       cadicaVideoReport: savedCadicaVideoReport,
       failedFiles,
-      notification: {
-        sent: false,
-        reason: 'No doctor assigned to this patient',
-      },
+      notification:      { sent: false, reason: 'No doctor assigned to this patient' },
     };
   }
 
-  const doctor = assignment.doctor;
-
   if (!doctor.fcmtoken?.trim()) {
     return {
-      message: 'CADICA video report uploaded successfully',
+      message:           'CADICA video report uploaded successfully',
       patientId,
-      totalUploaded: videos.length,
-      totalFailed: failedFiles.length,
+      totalUploaded:     videos.length,
+      totalFailed:       failedFiles.length,
       cadicaVideoReport: savedCadicaVideoReport,
       failedFiles,
-      notification: {
-        sent: false,
+      notification:      {
+        sent:   false,
         reason: `Doctor "${doctor.fullname}" has no FCM token registered.`,
       },
     };
@@ -385,10 +360,10 @@ async uploadCadicaVideosOnly(
 
   try {
     await this.firebaseService.sendReportToDoctor({
-      fcmToken: doctor.fcmtoken,
-      doctorName: doctor.fullname,
-      patientName: patient.fullname,
-      reportId: savedCadicaVideoReport.cadicavideoreportid,
+      fcmToken:        doctor.fcmtoken,
+      doctorName:      doctor.fullname,
+      patientName:     patient.fullname,
+      reportId:        savedCadicaVideoReport.cadicavideoreportid,
       radiologistName: radiologist.fullname,
       comment:
         comment?.trim() ||
@@ -396,17 +371,13 @@ async uploadCadicaVideosOnly(
     });
 
     return {
-      message: 'CADICA video report uploaded and sent to doctor successfully',
+      message:           'CADICA video report uploaded and sent to doctor successfully',
       patientId,
-      totalUploaded: videos.length,
-      totalFailed: failedFiles.length,
+      totalUploaded:     videos.length,
+      totalFailed:       failedFiles.length,
       cadicaVideoReport: savedCadicaVideoReport,
       failedFiles,
-      notification: {
-        sent: true,
-        sentToDoctor: doctor.fullname,
-        doctorId: doctor.doctorid,
-      },
+      notification:      { sent: true, sentToDoctor: doctor.fullname, doctorId: doctor.doctorid },
     };
   } catch (error) {
     if (
@@ -418,17 +389,17 @@ async uploadCadicaVideosOnly(
     }
 
     return {
-      message: 'CADICA video report uploaded successfully',
+      message:           'CADICA video report uploaded successfully',
       patientId,
-      totalUploaded: videos.length,
-      totalFailed: failedFiles.length,
+      totalUploaded:     videos.length,
+      totalFailed:       failedFiles.length,
       cadicaVideoReport: savedCadicaVideoReport,
       failedFiles,
-      notification: {
-        sent: false,
-        reason: 'Firebase notification failed',
-        firebaseErrorCode: error?.errorInfo?.code ?? 'UNKNOWN',
-        firebaseErrorMessage: error?.message ?? 'Unknown Firebase error',
+      notification:      {
+        sent:                 false,
+        reason:               'Firebase notification failed',
+        firebaseErrorCode:    error?.errorInfo?.code ?? 'UNKNOWN',
+        firebaseErrorMessage: error?.message         ?? 'Unknown Firebase error',
       },
     };
   }

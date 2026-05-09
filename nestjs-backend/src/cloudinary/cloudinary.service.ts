@@ -41,4 +41,47 @@ export class CloudinaryService {
       .end(buffer); // ✅ streamifier ki zaroorat nahi — .end(buffer) directly
   });
 }
+
+// ── Upload video buffer to Cloudinary ──────────────────────────────────────
+  // Used by: cadica radiologist upload (video files)
+  async uploadVideo(
+    buffer: Buffer,
+    publicId: string,
+    folder = 'cadica_videos',
+  ): Promise<string> {
+    return this.uploadBuffer(buffer, publicId, folder, 'video');
+  }
+ 
+  // ── Shared upload helper ───────────────────────────────────────────────────
+  private uploadBuffer(
+    buffer: Buffer,
+    publicId: string,
+    folder: string,
+    resourceType: 'image' | 'video' | 'raw' | 'auto',
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          public_id:     publicId,
+          folder,
+          overwrite:     true,
+          resource_type: resourceType,
+        },
+        (error, result: UploadApiResponse) => {
+          if (error) {
+            console.error('[Cloudinary] Upload error:', error);
+            return reject(
+              new InternalServerErrorException(
+                `Cloudinary upload failed: ${error.message}`,
+              ),
+            );
+          }
+          resolve(result.secure_url);
+        },
+      );
+ 
+      // ✅ No streamifier needed — pipe buffer directly
+      uploadStream.end(buffer);
+    });
+  }
 }

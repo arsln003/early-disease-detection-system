@@ -37,144 +37,41 @@ export class CadicaService {
     private readonly cadicaResultRepository: Repository<CadicaResult>,
   ) {}
 
-  async processMultipleVideoBuffers(
-  files: CadicaVideoFile[],
-  saveGradcam: boolean = true,
-  cadicaVideoReportId: number,
-) {
-  if (!files || files.length === 0) {
-    throw new BadRequestException(
-      'At least one video is required for prediction',
-    );
-  }
 
-  try {
-    const formData = new FormData();
 
-    for (const file of files) {
-      formData.append('files', file.buffer, {
-        filename: file.filename,
-        contentType: file.mimetype || 'video/mp4',
-      });
-    }
-
-    const response = await axios.post(
-      `http://localhost:8000/cadica/predict?save_gradcam=${saveGradcam}&report_id=${cadicaVideoReportId}`,
-      formData,
-      {
-        headers: formData.getHeaders(),
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
-      },
-    );
-
-    return response.data;
-  } catch (error) {
-    console.log('CADICA Python API error:', error?.response?.data || error);
-
-    throw new InternalServerErrorException(
-      error?.response?.data?.detail ||
-        error?.response?.data?.message ||
-        error?.message ||
-        'CADICA model inference failed',
-    );
-  }
-}
-
-private buildFinalCadicaResult(cadicaModelResult: any) {
-  const perVideo = Array.isArray(cadicaModelResult?.per_video)
-    ? cadicaModelResult.per_video
-    : [];
-
-  const gradcamImages = perVideo.map((item) => ({
-    video: item?.video ?? null,
-    prediction: item?.prediction ?? null,
-    probability: item?.probability ?? null,
-    weight: item?.weight ?? null,
-    gtLabel: item?.gt_label ?? null,
-    correct: item?.correct ?? null,
-    gradcamImg: item?.gradcam_img ?? null,
-    gradcamImgUrl: item?.gradcam_img_url ?? null,
-  }));
-
-  return {
-    verdict: cadicaModelResult?.verdict ?? null,
-
-    confidence: cadicaModelResult?.confidence ?? null,
-
-    weightedAvgProb: cadicaModelResult?.weighted_avg_prob ?? null,
-
-    mostSuspiciousVideo:
-      cadicaModelResult?.most_suspicious_video ?? null,
-
-    mostSuspiciousProb:
-      cadicaModelResult?.most_suspicious_prob ?? null,
-
-    videosProcessed:
-      cadicaModelResult?.videos_processed ?? perVideo.length ?? null,
-
-    videosSkipped:
-      cadicaModelResult?.videos_skipped ?? null,
-
-    summaryImage:
-      cadicaModelResult?.summary_image ?? null,
-
-    summaryImageUrl:
-      cadicaModelResult?.summary_image_url ?? null,
-
-    gradcamImages,
-
-    perVideo,
-  };
-}
-
-  private hasCompleteCadicaResult(result: CadicaResult | null | undefined) {
-    return (
-      !!result &&
-      !!result.verdict &&
-      result.confidence !== null &&
-      result.confidence !== undefined
-    );
-  }
-
-  async predictCadicaVideoReport(
+async predictCadicaVideoReport(
   doctorId: number,
   cadicaVideoReportId: number,
 ) {
   if (!cadicaVideoReportId || Number.isNaN(cadicaVideoReportId)) {
     throw new BadRequestException('Valid cadicaVideoReportId is required');
   }
-
+ 
   const cadicaVideoReport = await this.cadicaVideoReportRepository.findOne({
-    where: { cadicavideoreportid: cadicaVideoReportId },
+    where:     { cadicavideoreportid: cadicaVideoReportId },
     relations: ['patient', 'radiologist', 'cadicaResult'],
   });
-
-  if (!cadicaVideoReport) {
-    throw new NotFoundException('CADICA video report not found');
-  }
-
-  if (!cadicaVideoReport.patient) {
-    throw new BadRequestException('CADICA video report has no patient linked');
-  }
-
+ 
+  if (!cadicaVideoReport) throw new NotFoundException('CADICA video report not found');
+  if (!cadicaVideoReport.patient) throw new BadRequestException('CADICA video report has no patient linked');
+ 
   const assignment = await this.assignmentRepository.findOne({
     where: {
-      doctor: { doctorid: doctorId },
+      doctor:  { doctorid: doctorId },
       patient: { patientid: cadicaVideoReport.patient.patientid },
     },
     relations: ['doctor', 'patient'],
   });
-
+ 
   if (!assignment) {
     throw new ForbiddenException(
       'You are not assigned to this patient, so you cannot run prediction',
     );
   }
-
+ 
+  // Return existing result if already complete
   if (this.hasCompleteCadicaResult(cadicaVideoReport.cadicaResult)) {
     let existingModelResult: any = null;
-
     try {
       existingModelResult = cadicaVideoReport.cadicaResult.rawResult
         ? JSON.parse(cadicaVideoReport.cadicaResult.rawResult)
@@ -182,95 +79,144 @@ private buildFinalCadicaResult(cadicaModelResult: any) {
     } catch {
       existingModelResult = cadicaVideoReport.cadicaResult.rawResult;
     }
-
+ 
     return {
-      message: 'CADICA prediction already exists for this video report',
+      message:             'CADICA prediction already exists for this video report',
       cadicaVideoReportId: cadicaVideoReport.cadicavideoreportid,
-      patient: cadicaVideoReport.patient,
-      radiologist: cadicaVideoReport.radiologist,
-      cadicaResult: cadicaVideoReport.cadicaResult,
-      modelResult: existingModelResult,
+      patient:             cadicaVideoReport.patient,
+      radiologist:         cadicaVideoReport.radiologist,
+      cadicaResult:        cadicaVideoReport.cadicaResult,
+      modelResult:         existingModelResult,
     };
   }
-
+ 
+  // Delete partial result if exists
   if (cadicaVideoReport.cadicaResult) {
     await this.cadicaResultRepository.delete({
       cadicavideoreportid: cadicaVideoReport.cadicavideoreportid,
     });
   }
-
+ 
   if (!cadicaVideoReport.videos || cadicaVideoReport.videos.length === 0) {
-    throw new BadRequestException(
-      'No videos found in this CADICA video report',
-    );
+    throw new BadRequestException('No videos found in this CADICA video report');
   }
-
-  const videoFiles: CadicaVideoFile[] = cadicaVideoReport.videos.map(
-    (video) => {
-      const absoluteFilePath = path.join(process.cwd(), video.filepath);
-
-      if (!fs.existsSync(absoluteFilePath)) {
-        throw new NotFoundException(
-          `Video file not found on server: ${video.filename}`,
-        );
-      }
-
+ 
+  // ✅ Download videos from Cloudinary URLs — no local file reading
+  const videoFiles = await Promise.all(
+    cadicaVideoReport.videos.map(async (video) => {
+      const response = await axios.get<ArrayBuffer>(video.filepath, {
+        responseType: 'arraybuffer',
+      });
       return {
-        buffer: fs.readFileSync(absoluteFilePath),
+        buffer:   Buffer.from(response.data),
         filename: video.filename,
         mimetype: video.mimetype || 'video/mp4',
       };
-    },
+    }),
   );
-
+ 
+  // Send to Python API
   const cadicaModelResult = await this.processMultipleVideoBuffers(
     videoFiles,
     true,
-    cadicaVideoReportId
+    cadicaVideoReportId,
   );
-
+ 
   const finalResult = this.buildFinalCadicaResult(cadicaModelResult);
-  const cadicaVideoReportIdValue = cadicaVideoReport.cadicavideoreportid;
-
-  if (!cadicaVideoReportIdValue) {
-    throw new BadRequestException('Invalid CADICA video report id');
-  }
-
+ 
+  // Save CadicaResult — Cloudinary URLs already set by Python
   const savedCadicaResult = await this.cadicaResultRepository.save(
     this.cadicaResultRepository.create({
-      cadicavideoreportid: cadicaVideoReportIdValue,
-
-      verdict: finalResult.verdict,
-      confidence: finalResult.confidence,
-      weightedAvgProb: finalResult.weightedAvgProb,
+      cadicavideoreportid: cadicaVideoReport.cadicavideoreportid,
+ 
+      verdict:             finalResult.verdict,
+      confidence:          finalResult.confidence,
+      weightedAvgProb:     finalResult.weightedAvgProb,
       mostSuspiciousVideo: finalResult.mostSuspiciousVideo,
-      mostSuspiciousProb: finalResult.mostSuspiciousProb,
-      videosProcessed: finalResult.videosProcessed,
-      videosSkipped: finalResult.videosSkipped,
-
-      summaryImage: finalResult.summaryImage,
-      summaryImageUrl: finalResult.summaryImageUrl,
-      gradcamImages: finalResult.gradcamImages,
-      perVideo: finalResult.perVideo,
-
+      mostSuspiciousProb:  finalResult.mostSuspiciousProb,
+      videosProcessed:     finalResult.videosProcessed,
+      videosSkipped:       finalResult.videosSkipped,
+ 
+      summaryImage:    finalResult.summaryImage    ?? null,
+      summaryImageUrl: finalResult.summaryImageUrl ?? null,  // ✅ Cloudinary URL
+      gradcamImages:   finalResult.gradcamImages   ?? null,  // ✅ Cloudinary URLs inside
+      perVideo:        finalResult.perVideo        ?? null,
+ 
       rawResult: JSON.stringify(cadicaModelResult),
       modelname: 'CADICA_THIRD_MODEL_V2',
     }),
   );
-
+ 
   await this.cadicaVideoReportRepository.update(
-    { cadicavideoreportid: cadicaVideoReportIdValue },
+    { cadicavideoreportid: cadicaVideoReport.cadicavideoreportid },
     { status: 'PREDICTED' },
   );
-
+ 
   return {
-    message: 'CADICA prediction completed successfully',
-    cadicaVideoReportId: cadicaVideoReportIdValue,
-    patient: cadicaVideoReport.patient,
-    radiologist: cadicaVideoReport.radiologist,
-    cadicaResult: savedCadicaResult,
-    modelResult: cadicaModelResult,
+    message:             'CADICA prediction completed successfully',
+    cadicaVideoReportId: cadicaVideoReport.cadicavideoreportid,
+    patient:             cadicaVideoReport.patient,
+    radiologist:         cadicaVideoReport.radiologist,
+    cadicaResult:        savedCadicaResult,
+    modelResult:         cadicaModelResult,
   };
+}
+ 
+// ── Private: Send video buffers to Python API ─────────────────────────────────
+private async processMultipleVideoBuffers(
+  videoFiles: { buffer: Buffer; filename: string; mimetype: string }[],
+  saveGradcam: boolean,
+  reportId: number,
+): Promise<any> {
+  const pythonApiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
+ 
+  const formData = new FormData();
+  for (const video of videoFiles) {
+    formData.append('files', video.buffer, {
+      filename:    video.filename,
+      contentType: video.mimetype,
+    });
+  }
+ 
+  const response = await axios.post(
+    `${pythonApiUrl}/cadica/predict?save_gradcam=${saveGradcam}&report_id=${reportId}`,
+    formData,
+    {
+      headers:          formData.getHeaders(),
+      maxBodyLength:    Infinity,
+      maxContentLength: Infinity,
+      timeout:          5 * 60 * 1000, // 5 min — video processing takes time
+    },
+  );
+ 
+  return response.data;
+}
+ 
+// ── Private: Map raw model output to entity fields ────────────────────────────
+private buildFinalCadicaResult(cadicaModelResult: any) {
+  return {
+    verdict:             cadicaModelResult?.verdict               ?? null,
+    confidence:          cadicaModelResult?.confidence            ?? null,
+    weightedAvgProb:     cadicaModelResult?.weighted_avg_prob     ?? null,
+    mostSuspiciousVideo: cadicaModelResult?.most_suspicious_video ?? null,
+    mostSuspiciousProb:  cadicaModelResult?.most_suspicious_prob  ?? null,
+    videosProcessed:     cadicaModelResult?.videos_processed      ?? null,
+    videosSkipped:       cadicaModelResult?.videos_skipped        ?? null,
+    summaryImage:        cadicaModelResult?.summary_image         ?? null,
+    summaryImageUrl:     cadicaModelResult?.summary_image_url     ?? null,  // ✅ Cloudinary
+    gradcamImages:       cadicaModelResult?.gradcam_images        ?? null,
+    perVideo:            cadicaModelResult?.per_video             ?? null,  // ✅ Cloudinary URLs inside
+  };
+}
+ 
+// ── Private: Check if result is complete ──────────────────────────────────────
+private hasCompleteCadicaResult(cadicaResult: CadicaResult | null): boolean {
+  if (!cadicaResult) return false;
+  return (
+    cadicaResult.verdict         !== null &&
+    cadicaResult.confidence      !== null &&
+    cadicaResult.videosProcessed !== null
+  );
 }
 
 async getCadicaPrediction(
