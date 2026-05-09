@@ -73,11 +73,10 @@ export class AdminController {
   }
 
   // ── Patients ───────────────────────────────────────────────────────────
-  @Get('patients')
-  getAllPatients(): Promise<Patient[]> {
-    return this.patientsService.findAllPatients();
-  }
-
+@Get('patients')
+async getAllPatients() {
+  return await this.patientsService.findAllPatients();
+}
  @Post('patients')
 createPatient(
   @Body() dto: CreatePatientDto,

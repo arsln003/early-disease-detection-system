@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards, ParseIntPipe, Req, BadRequestException, Patch, Body, Post } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards, ParseIntPipe, Req, BadRequestException, Patch, Body, Post, UnauthorizedException } from '@nestjs/common';
 import { DoctorsService } from './doctors.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -6,6 +6,7 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UpdateDoctorFcmTokenDto } from '../admin/dto/update-doctor-fcmtoken.dto';
 import { PredictionService } from 'src/prediction/prediction.service';
 import { CadicaService } from 'src/cadica/cadica.service';
+import { StrokeService } from 'src/stroke/stroke.service';
 @Roles('doctor')                        // ✅ lowercase matches JWT payload
 @UseGuards(JwtAuthGuard, RolesGuard)    // ✅ use JwtAuthGuard, not AuthGuard('jwt')
 @Controller('doctors')
@@ -13,6 +14,7 @@ export class DoctorsController {
   constructor(private readonly doctorsService: DoctorsService,
               private readonly predictionService: PredictionService,
                 private readonly cadicaService: CadicaService,
+                 private readonly strokeService: StrokeService,
 
   ) {}
 
@@ -94,5 +96,23 @@ getCadicaPrediction(
   );
 }
 
+
+// ── Stroke Prediction Result ─────────────────────────────────────────
+@Get('stroke-reports/:strokeReportId/prediction')
+getStrokePrediction(
+  @Param('strokeReportId', ParseIntPipe) strokeReportId: number,
+  @Req() req: any,
+) {
+  const doctorId: number = req.user.id;
+
+  if (!doctorId) {
+    throw new UnauthorizedException('Invalid doctor token');
+  }
+
+  return this.strokeService.getStrokePredictionForDoctor(
+    doctorId,
+    strokeReportId,
+  );
+}
 
 }

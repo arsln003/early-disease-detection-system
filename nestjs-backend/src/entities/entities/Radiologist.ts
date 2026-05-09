@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { Report } from "./Report";
-
+import { StrokeReport } from './StrokeReport';
 @Index("radiologist_email_key", ["email"], { unique: true })
 @Index("radiologist_pkey", ["radiologistid"], { unique: true })
 @Entity("radiologist", { schema: "public" })
@@ -47,4 +47,7 @@ export class Radiologist {
 
   @OneToMany(() => Report, (report) => report.radiologist)
   reports: Report[];
+
+  @OneToMany(() => StrokeReport, (strokeReport) => strokeReport.radiologist)
+  strokeReports: StrokeReport[];
 }

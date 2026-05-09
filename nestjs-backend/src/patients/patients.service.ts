@@ -24,52 +24,173 @@ export class PatientsService {
     private readonly assignmentRepository: Repository<Assignment>,
   ) {}
 
+
+
   // ---- GET ALL ----
-findAllPatients(): Promise<Patient[]> {
-  return this.patientRepository.find({
+async findAllPatients() {
+  const patients = await this.patientRepository.find({
     relations: [
-      'assignments',         // Get related assignments for each patient
-      'assignments.doctor',  // Get doctor details for each assignment
-      'assignments.assignedby', // Get admin details (who assigned)
-      'reports',             // Get reports for the patient
-      'reports.radiologist', // Get radiologist details for each report
-      'cadicaVideoReports',  // Get related cadica video reports
-      'cadicaVideoReports.cadicaResult', // Get cadica result details
-    ], 
+      'assignments',
+      'assignments.doctor',
+      'assignments.assignedby',
+
+      'reports',
+      'reports.radiologist',
+
+      'cadicaVideoReports',
+      'cadicaVideoReports.radiologist',
+
+      'strokeReports',
+      'strokeReports.radiologist',
+    ],
+    order: {
+      patientid: 'ASC',
+    },
   });
+
+  return {
+    message: 'Patients fetched successfully',
+    total: patients.length,
+    patients: patients.map((patient) => {
+      const assignments = patient.assignments || [];
+
+      const latestAssignment = assignments
+        .filter((assignment) => assignment.doctor)
+        .sort((a, b) => {
+          const dateA = a.assignedat ? new Date(a.assignedat).getTime() : 0;
+          const dateB = b.assignedat ? new Date(b.assignedat).getTime() : 0;
+
+          if (dateB !== dateA) return dateB - dateA;
+
+          return b.assignmentid - a.assignmentid;
+        })[0];
+
+      const assignedDoctor = latestAssignment?.doctor
+        ? {
+            assignmentid: latestAssignment.assignmentid,
+            assignedat: latestAssignment.assignedat,
+
+            doctorid: latestAssignment.doctor.doctorid,
+            fullname: latestAssignment.doctor.fullname,
+            specialization: latestAssignment.doctor.specialization,
+            email: latestAssignment.doctor.email,
+            experience: latestAssignment.doctor.experience,
+            contactnumber: latestAssignment.doctor.contactnumber,
+            status: latestAssignment.doctor.status,
+            createdat: latestAssignment.doctor.createdat,
+
+            assignedby: latestAssignment.assignedby
+              ? {
+                  adminid: latestAssignment.assignedby.adminid,
+                  fullname: latestAssignment.assignedby.fullname,
+                  email: latestAssignment.assignedby.email,
+                }
+              : null,
+          }
+        : null;
+
+      return {
+        patientid: patient.patientid,
+        fullname: patient.fullname,
+        email: patient.email,
+        age: patient.age,
+        gender: patient.gender,
+        contactnumber: patient.contactnumber,
+        address: patient.address,
+        createdat: patient.createdat,
+
+        assignedDoctor,
+
+        assignments: assignments.map((assignment) => ({
+          assignmentid: assignment.assignmentid,
+          assignedat: assignment.assignedat,
+
+          doctor: assignment.doctor
+            ? {
+                doctorid: assignment.doctor.doctorid,
+                fullname: assignment.doctor.fullname,
+                specialization: assignment.doctor.specialization,
+                email: assignment.doctor.email,
+                experience: assignment.doctor.experience,
+                contactnumber: assignment.doctor.contactnumber,
+                status: assignment.doctor.status,
+              }
+            : null,
+
+          assignedby: assignment.assignedby
+            ? {
+                adminid: assignment.assignedby.adminid,
+                fullname: assignment.assignedby.fullname,
+                email: assignment.assignedby.email,
+              }
+            : null,
+        })),
+
+        reports: (patient.reports || []).map((report) => ({
+          reportid: report.reportid,
+          filename: report.filename,
+          filepath: report.filepath,
+          comment: report.comment,
+          uploadedat: report.uploadedat,
+
+          radiologist: report.radiologist
+            ? {
+                radiologistid: report.radiologist.radiologistid,
+                fullname: report.radiologist.fullname,
+                email: report.radiologist.email,
+                contactnumber: report.radiologist.contactnumber,
+                status: report.radiologist.status,
+                createdat: report.radiologist.createdat,
+              }
+            : null,
+        })),
+
+        cadicaVideoReports: (patient.cadicaVideoReports || []).map(
+          (cadicaReport) => ({
+            cadicavideoreportid: cadicaReport.cadicavideoreportid,
+            videos: cadicaReport.videos,
+            comment: cadicaReport.comment,
+            status: cadicaReport.status,
+            uploadedat: cadicaReport.uploadedat,
+
+            radiologist: cadicaReport.radiologist
+              ? {
+                  radiologistid: cadicaReport.radiologist.radiologistid,
+                  fullname: cadicaReport.radiologist.fullname,
+                  email: cadicaReport.radiologist.email,
+                  contactnumber: cadicaReport.radiologist.contactnumber,
+                  status: cadicaReport.radiologist.status,
+                  createdat: cadicaReport.radiologist.createdat,
+                }
+              : null,
+          }),
+        ),
+
+        strokeReports: (patient.strokeReports || []).map((strokeReport) => ({
+          strokereportid: strokeReport.strokereportid,
+          filename: strokeReport.filename,
+          filepath: strokeReport.filepath,
+          mimetype: strokeReport.mimetype,
+          size: strokeReport.size,
+          comment: strokeReport.comment,
+          status: strokeReport.status,
+          uploadedat: strokeReport.uploadedat,
+
+          radiologist: strokeReport.radiologist
+            ? {
+                radiologistid: strokeReport.radiologist.radiologistid,
+                fullname: strokeReport.radiologist.fullname,
+                email: strokeReport.radiologist.email,
+                contactnumber: strokeReport.radiologist.contactnumber,
+                status: strokeReport.radiologist.status,
+                createdat: strokeReport.radiologist.createdat,
+              }
+            : null,
+        })),
+      };
+    }),
+  };
 }
-
-
-
-
-// async createPatient(patientData: CreatePatientDto): Promise<Patient> {
-//   // 1️⃣ Check required fields
-//   if (!patientData.fullname || !patientData.email) {
-//     throw new BadRequestException('fullname and email are required');
-//   }
-
-//   // 2️⃣ Check if email already exists
-//   const existingPatient = await this.patientRepository.findOne({
-//     where: { email: patientData.email },
-//   });
-
-//   if (existingPatient) {
-//     throw new ConflictException('Patient with this email already exists');
-//   }
-
-//   // 3️⃣ Create and save patient
-//   const patient = this.patientRepository.create({
-//     fullname: patientData.fullname,
-//     email: patientData.email,
-//     contactnumber: patientData.contactnumber ?? null,
-//     age: patientData.age ?? null,
-//     gender: patientData.gender ?? null,
-//     address: patientData.address ?? null,
-//   });
-
-//   return this.patientRepository.save(patient);
-// }
-
  
 async createPatient(dto: CreatePatientDto, adminId: number): Promise<any> {
   // 1️⃣ Check duplicate email

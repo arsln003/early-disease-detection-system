@@ -875,41 +875,180 @@ export class ReportsService {
 
     return reports;
   }
-
-  /** Get all reports for a specific patient */
-  async getReportsByPatientId(patientId: number): Promise<Report[]> {
-    if (!patientId || Number.isNaN(Number(patientId))) {
-      throw new BadRequestException('Valid patientId is required');
-    }
-
-    const reports = await this.reportsRepository.find({
-      where: { patient: { patientid: patientId } },
-      relations: ['patient', 'radiologist', 'feature', 'aiResult'],
-      order: { uploadedat: 'DESC' },
-    });
-
-    if (!reports.length) {
-      throw new NotFoundException(
-        `No reports found for patient with ID ${patientId}`,
-      );
-    }
-
-    return reports;
+/** Get all reports for a specific patient with assigned doctor */
+async getReportsByPatientId(patientId: number) {
+  if (!patientId || Number.isNaN(Number(patientId))) {
+    throw new BadRequestException('Valid patientId is required');
   }
 
-  /** Get all reports (admin overview) */
-  async getAllReports() {
-    const reports = await this.reportsRepository.find({
-      relations: ['patient', 'radiologist', 'feature', 'aiResult'],
-      order: { uploadedat: 'DESC' },
-    });
+  const reports = await this.reportsRepository.find({
+    where: {
+      patient: { patientid: patientId },
+    },
+    relations: [
+      'patient',
+      'patient.assignments',
+      'patient.assignments.doctor',
+      'radiologist',
+    ],
+    order: {
+      uploadedat: 'ASC',
+    },
+  });
 
-    return {
-      message: 'Reports fetched successfully',
-      total: reports.length,
-      reports: reports.map((report) => this.formatReportSummary(report)),
-    };
+  if (!reports.length) {
+    throw new NotFoundException(
+      `No reports found for patient with ID ${patientId}`,
+    );
   }
+
+  return {
+    message: 'Reports fetched successfully',
+    total: reports.length,
+    reports: reports.map((report) => {
+      const assignments = report.patient?.assignments || [];
+
+      const latestAssignment = assignments
+        .filter((assignment) => assignment.doctor)
+        .sort((a, b) => {
+          const dateA = a.assignedat ? new Date(a.assignedat).getTime() : 0;
+          const dateB = b.assignedat ? new Date(b.assignedat).getTime() : 0;
+
+          if (dateB !== dateA) return dateB - dateA;
+
+          return b.assignmentid - a.assignmentid;
+        })[0];
+
+      const assignedDoctor = latestAssignment?.doctor
+        ? {
+            doctorid: latestAssignment.doctor.doctorid,
+            fullname: latestAssignment.doctor.fullname,
+            specialization: latestAssignment.doctor.specialization,
+            email: latestAssignment.doctor.email,
+            experience: latestAssignment.doctor.experience,
+            contactnumber: latestAssignment.doctor.contactnumber,
+            status: latestAssignment.doctor.status,
+            assignedat: latestAssignment.assignedat,
+          }
+        : null;
+
+      return {
+        reportid: report.reportid,
+        filename: report.filename,
+        filepath: report.filepath,
+        comment: report.comment,
+        uploadedat: report.uploadedat,
+
+        patient: report.patient
+          ? {
+              patientid: report.patient.patientid,
+              fullname: report.patient.fullname,
+              email: report.patient.email,
+              age: report.patient.age,
+              gender: report.patient.gender,
+              contactnumber: report.patient.contactnumber,
+              address: report.patient.address,
+              createdat: report.patient.createdat,
+            }
+          : null,
+
+        radiologist: report.radiologist
+          ? {
+              radiologistid: report.radiologist.radiologistid,
+              fullname: report.radiologist.fullname,
+              email: report.radiologist.email,
+              contactnumber: report.radiologist.contactnumber,
+              status: report.radiologist.status,
+              createdat: report.radiologist.createdat,
+            }
+          : null,
+
+        assignedDoctor,
+      };
+    }),
+  };
+}
+
+/** Get all reports without AI result and feature, but with assigned doctor */
+async getAllReports() {
+  const reports = await this.reportsRepository.find({
+    relations: [
+      'patient',
+      'patient.assignments',
+      'patient.assignments.doctor',
+      'radiologist',
+    ],
+    order: {
+      uploadedat: 'ASC',
+    },
+  });
+
+  return {
+    message: 'Reports fetched successfully',
+    total: reports.length,
+    reports: reports.map((report) => {
+      const assignments = report.patient?.assignments || [];
+
+      // latest assignment based on assignedat / assignmentid
+      const latestAssignment = assignments
+        .filter((assignment) => assignment.doctor)
+        .sort((a, b) => {
+          const dateA = a.assignedat ? new Date(a.assignedat).getTime() : 0;
+          const dateB = b.assignedat ? new Date(b.assignedat).getTime() : 0;
+
+          if (dateB !== dateA) return dateB - dateA;
+
+          return b.assignmentid - a.assignmentid;
+        })[0];
+
+      const assignedDoctor = latestAssignment?.doctor
+        ? {
+            doctorid: latestAssignment.doctor.doctorid,
+            fullname: latestAssignment.doctor.fullname,
+            specialization: latestAssignment.doctor.specialization,
+            email: latestAssignment.doctor.email,
+            experience: latestAssignment.doctor.experience,
+            contactnumber: latestAssignment.doctor.contactnumber,
+            status: latestAssignment.doctor.status,
+            assignedat: latestAssignment.assignedat,
+          }
+        : null;
+
+      return {
+        reportid: report.reportid,
+        filename: report.filename,
+        comment: report.comment,
+        uploadedat: report.uploadedat,
+
+        patient: report.patient
+          ? {
+              patientid: report.patient.patientid,
+              fullname: report.patient.fullname,
+              email: report.patient.email,
+              age: report.patient.age,
+              gender: report.patient.gender,
+              contactnumber: report.patient.contactnumber,
+              address: report.patient.address,
+              createdat: report.patient.createdat,
+            }
+          : null,
+
+        radiologist: report.radiologist
+          ? {
+              radiologistid: report.radiologist.radiologistid,
+              fullname: report.radiologist.fullname,
+              email: report.radiologist.email,
+              contactnumber: report.radiologist.contactnumber,
+              status: report.radiologist.status,
+              createdat: report.radiologist.createdat,
+            }
+          : null,
+
+        assignedDoctor,
+      };
+    }),
+  };
+}
 
   /** Upload PDF, run OCR, attempt AI prediction, notify doctor */
   async uploadAndAnalyzeFile(

@@ -10,8 +10,9 @@ import { Feature } from 'src/entities/entities/Feature';
 import { Report } from 'src/entities/entities/Report';
 import { PredictionModule } from 'src/prediction/prediction.module'; // ← add
 import {CadicaModule} from 'src/cadica/cadica.module'; // ← add
+import { StrokeModule } from 'src/stroke/stroke.module';
 @Module({
-  imports: [TypeOrmModule.forFeature([Doctor,Assignment,AiResult,Feature,Report]), AuthModule, PredictionModule, CadicaModule,], // register Doctor entity
+  imports: [TypeOrmModule.forFeature([Doctor,Assignment,AiResult,Feature,Report]), AuthModule, PredictionModule, CadicaModule, StrokeModule], // register Doctor entity
   providers: [DoctorsService],
   controllers: [DoctorsController],
   exports: [DoctorsService,TypeOrmModule], 

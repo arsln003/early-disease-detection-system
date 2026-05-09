@@ -14,10 +14,13 @@ import { Assignment } from 'src/entities/entities/Assignment';
 import { Doctor } from 'src/entities/entities/Doctor';
 import { Patient } from 'src/entities/entities/Patient';
 import { CadicaVideoReport } from 'src/entities/entities/CadicaVideoReport';
+import { CadicaModule } from 'src/cadica/cadica.module';
+import { StrokeModule } from 'src/stroke/stroke.module';
 @Module({
   imports: [TypeOrmModule.forFeature([Radiologist,Report,Assignment,Doctor,Patient,CadicaVideoReport]),  // ✅ add Doctor and Patient to TypeOrmModule
    FirebaseModule,
-  OcrModule, PatientsModule, ReportsModule, PredictionModule, AuthModule
+  OcrModule, PatientsModule, ReportsModule, PredictionModule, AuthModule,
+  CadicaModule,StrokeModule
   ],
   controllers: [RadiologistController],
   providers: [RadiologistService],

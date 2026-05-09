@@ -420,4 +420,190 @@ async getCadicaPrediction(
 }
 
 
+//get all cadica video reports 
+
+async getAllCadicaVideoReports() {
+  const cadicaVideoReports = await this.cadicaVideoReportRepository.find({
+    relations: [
+      'patient',
+      'patient.assignments',
+      'patient.assignments.doctor',
+      'radiologist',
+    ],
+    order: {
+      uploadedat: 'ASC',
+    },
+  });
+
+  return {
+    message: 'CADICA video reports fetched successfully',
+    total: cadicaVideoReports.length,
+    cadicaVideoReports: cadicaVideoReports.map((report) => {
+      const assignments = report.patient?.assignments || [];
+
+      const latestAssignment = assignments
+        .filter((assignment) => assignment.doctor)
+        .sort((a, b) => {
+          const dateA = a.assignedat ? new Date(a.assignedat).getTime() : 0;
+          const dateB = b.assignedat ? new Date(b.assignedat).getTime() : 0;
+
+          if (dateB !== dateA) return dateB - dateA;
+
+          return b.assignmentid - a.assignmentid;
+        })[0];
+
+      const assignedDoctor = latestAssignment?.doctor
+        ? {
+            doctorid: latestAssignment.doctor.doctorid,
+            fullname: latestAssignment.doctor.fullname,
+            specialization: latestAssignment.doctor.specialization,
+            email: latestAssignment.doctor.email,
+            experience: latestAssignment.doctor.experience,
+            contactnumber: latestAssignment.doctor.contactnumber,
+            status: latestAssignment.doctor.status,
+            assignedat: latestAssignment.assignedat,
+          }
+        : null;
+
+      return {
+        cadicavideoreportid: report.cadicavideoreportid,
+        videos: report.videos,
+        comment: report.comment,
+        status: report.status,
+        uploadedat: report.uploadedat,
+
+        patient: report.patient
+          ? {
+              patientid: report.patient.patientid,
+              fullname: report.patient.fullname,
+              email: report.patient.email,
+              age: report.patient.age,
+              gender: report.patient.gender,
+              contactnumber: report.patient.contactnumber,
+              address: report.patient.address,
+              createdat: report.patient.createdat,
+            }
+          : null,
+
+        radiologist: report.radiologist
+          ? {
+              radiologistid: report.radiologist.radiologistid,
+              fullname: report.radiologist.fullname,
+              email: report.radiologist.email,
+              contactnumber: report.radiologist.contactnumber,
+              status: report.radiologist.status,
+              createdat: report.radiologist.createdat,
+            }
+          : null,
+
+        assignedDoctor,
+      };
+    }),
+  };
+}
+
+
+async getCadicaVideoReportsByPatientId(patientId: number) {
+  if (!patientId || Number.isNaN(Number(patientId))) {
+    throw new BadRequestException('Valid patientId is required');
+  }
+
+  const cadicaVideoReports = await this.cadicaVideoReportRepository.find({
+    where: {
+      patient: {
+        patientid: patientId,
+      },
+    },
+    relations: [
+      'patient',
+      'patient.assignments',
+      'patient.assignments.doctor',
+      'radiologist',
+    ],
+    order: {
+      uploadedat: 'ASC',
+    },
+  });
+
+  if (!cadicaVideoReports.length) {
+    throw new NotFoundException(
+      `No CADICA video reports found for patient with ID ${patientId}`,
+    );
+  }
+
+  return {
+    message: 'CADICA video reports fetched successfully',
+    patientId,
+    total: cadicaVideoReports.length,
+    cadicaVideoReports: cadicaVideoReports.map((report) => {
+      const assignments = report.patient?.assignments || [];
+
+      const latestAssignment = assignments
+        .filter((assignment) => assignment.doctor)
+        .sort((a, b) => {
+          const dateA = a.assignedat ? new Date(a.assignedat).getTime() : 0;
+          const dateB = b.assignedat ? new Date(b.assignedat).getTime() : 0;
+
+          if (dateB !== dateA) return dateB - dateA;
+
+          return b.assignmentid - a.assignmentid;
+        })[0];
+
+      const assignedDoctor = latestAssignment?.doctor
+        ? {
+            doctorid: latestAssignment.doctor.doctorid,
+            fullname: latestAssignment.doctor.fullname,
+            specialization: latestAssignment.doctor.specialization,
+            email: latestAssignment.doctor.email,
+            experience: latestAssignment.doctor.experience,
+            contactnumber: latestAssignment.doctor.contactnumber,
+            status: latestAssignment.doctor.status,
+            assignedat: latestAssignment.assignedat,
+          }
+        : null;
+
+      return {
+        cadicavideoreportid: report.cadicavideoreportid,
+        videos: report.videos,
+        comment: report.comment,
+        status: report.status,
+        uploadedat: report.uploadedat,
+
+        patient: report.patient
+          ? {
+              patientid: report.patient.patientid,
+              fullname: report.patient.fullname,
+              email: report.patient.email,
+              age: report.patient.age,
+              gender: report.patient.gender,
+              contactnumber: report.patient.contactnumber,
+              address: report.patient.address,
+              createdat: report.patient.createdat,
+            }
+          : null,
+
+        radiologist: report.radiologist
+          ? {
+              radiologistid: report.radiologist.radiologistid,
+              fullname: report.radiologist.fullname,
+              email: report.radiologist.email,
+              contactnumber: report.radiologist.contactnumber,
+              status: report.radiologist.status,
+              createdat: report.radiologist.createdat,
+            }
+          : null,
+
+        assignedDoctor,
+      };
+    }),
+  };
+}
+
+
+
+
+
+
+
+
 }

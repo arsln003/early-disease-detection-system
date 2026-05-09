@@ -28,8 +28,8 @@ import { Roles } from 'src/auth/decorators/roles.decorator';         // ✅ corr
 import { PatientsService } from 'src/patients/patients.service';
 
 import { FirebaseService } from 'src/firebase/firebase.service'; 
-
-
+import { CadicaService } from 'src/cadica/cadica.service';
+import { StrokeService } from 'src/stroke/stroke.service';
 @Roles('radiologist')                        // ✅ lowercase
 @UseGuards(JwtAuthGuard, RolesGuard)         // ✅ JwtAuthGuard not AuthGuard('jwt')
 @Controller('radiologists')
@@ -39,6 +39,8 @@ export class RadiologistController {
     private readonly reportService: ReportsService,
     private readonly predictionService: PredictionService,
      private readonly patientsService: PatientsService,
+ private readonly cadicaService: CadicaService,
+ private readonly strokeService: StrokeService,
   ) {}
 
   // ── Profile ────────────────────────────────────────────────────────────
@@ -88,15 +90,49 @@ export class RadiologistController {
     return this.reportService.getReportsByPatientId(patientId);
   }
 
+
+  //get all reports 
 @Get('all-reports')
 getAllReports() {
   return this.reportService.getAllReports();
 }
-//getall patients
 
+//get all cadica video reports 
+
+@Get('all-cadica-video-reports')
+getAllCadicaVideoReports() {
+  return this.cadicaService.getAllCadicaVideoReports();
+}
+
+// ── CADICA Video Reports by Patient ID ─────────────────────────────
+@Get('patients/:patientId/cadica-video-reports')
+getCadicaVideoReportsByPatientId(
+  @Param('patientId', ParseIntPipe) patientId: number,
+) {
+  return this.cadicaService.getCadicaVideoReportsByPatientId(patientId);
+}
+
+// ──get all Stroke Reports ─────────────────────────────────────────────────
+@Get('all-stroke-reports')
+getAllStrokeReports() {
+  return this.strokeService.getAllStrokeReports();
+}
+
+
+// ── Stroke Reports by Patient ID ─────────────────────────────────────
+@Get('patients/:patientId/stroke-reports')
+getStrokeReportsByPatientId(
+  @Param('patientId', ParseIntPipe) patientId: number,
+) {
+  return this.strokeService.getStrokeReportsByPatientId(patientId);
+}
+
+
+
+//getall patients
 @Get('patients')
-getAllPatients() {
-  return this.patientsService.findAllPatients();
+async getAllPatients() {
+  return await this.patientsService.findAllPatients();
 }
 
 
@@ -125,5 +161,27 @@ uploadCadicaVideosForPatient(
   );
 }
 
+// stroke img
+@Post('patients/:patientId/upload-stroke-image')
+@UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+uploadStrokeImageForPatient(
+  @UploadedFile() file: Express.Multer.File,
+  @Req() req: any,
+  @Param('patientId', ParseIntPipe) patientId: number,
+  @Body('comment') comment?: string,
+) {
+  if (!file) {
+    throw new BadRequestException('Stroke CT image is required');
+  }
+
+  const radiologistId: number = req.user.id;
+
+  return this.strokeService.uploadStrokeImageAndPredict(
+    radiologistId,
+    patientId,
+    file,
+    comment,
+  );
+}
 
 }

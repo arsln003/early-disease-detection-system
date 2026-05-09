@@ -29,6 +29,7 @@ import { PredictionModule } from './prediction/prediction.module';
 import { FirebaseModule } from './firebase/firebase.module';
 
 import { CadicaModule } from './cadica/cadica.module';
+import { StrokeModule } from './stroke/stroke.module';
 
 
 
@@ -64,6 +65,7 @@ import { CadicaModule } from './cadica/cadica.module';
     PredictionModule,
     FirebaseModule,
     CadicaModule,
+    StrokeModule,
 
 
   ],

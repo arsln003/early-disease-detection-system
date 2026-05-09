@@ -28,6 +28,15 @@ app.mount(
     name="patient_output"
 )
 
+STROKE_OUTPUT_DIR = os.path.join(BASE_DIR, "stroke_output")
+os.makedirs(STROKE_OUTPUT_DIR, exist_ok=True)
+
+app.mount(
+    "/stroke_output",
+    StaticFiles(directory=STROKE_OUTPUT_DIR),
+    name="stroke_output"
+)
+
 
 @app.get("/")
 def home():
@@ -113,3 +122,11 @@ async def cadica_predict_endpoint(
 
 
 
+@app.post("/stroke/predict")
+async def stroke_predict_endpoint(
+    file: UploadFile = File(...),
+    report_id: int | None = None,
+):
+    from stroke_model import stroke_predict_file
+
+    return await stroke_predict_file(file=file, report_id=report_id)

@@ -2,3 +2,13 @@ venv/
 __pycache__/
 *.pyc
 .env
+
+node_modules/
+dist/
+
+uploads/
+nestjs-backend/uploads/
+
+python-api/patient_output/
+python-api/stroke_output/
+python-api/__pycache__/
