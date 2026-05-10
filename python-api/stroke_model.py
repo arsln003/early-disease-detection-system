@@ -175,6 +175,12 @@
 #         shutil.rmtree(tmp_output_dir, ignore_errors=True)
 #         print("[Cleanup] ✅ All temp files deleted")
 
+
+
+
+
+
+
 import gc
 import os
 import shutil
@@ -187,12 +193,12 @@ import torch
 from dotenv import load_dotenv
 from fastapi import HTTPException, UploadFile
 
-from final_model_v2 import ClassifierCNN, UNet, predict
+# ✅ ClassifierCNN aur UNet ko top level pe import mat karo
+# — sirf load_models() ke andar import honge
+# from final_model_v2 import ClassifierCNN, UNet, predict  ← HATA DIYA
 
-# ── Load .env ─────────────────────────────────────────────────────────────────
 load_dotenv()
 
-# ── Cloudinary Config ─────────────────────────────────────────────────────────
 cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME")
 api_key    = os.environ.get("CLOUDINARY_API_KEY")
 api_secret = os.environ.get("CLOUDINARY_API_SECRET")
@@ -209,28 +215,27 @@ cloudinary.config(
     api_secret=api_secret,
 )
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR        = Path(__file__).resolve().parent
 CLASSIFIER_PATH = BASE_DIR / "best_classifier.pt"
 SEGMENTER_PATH  = BASE_DIR / "best_segmentation_model.pth"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# GLOBAL MODEL INSTANCES
-# Loaded ONCE at startup via load_models() — never reloaded per request
-# ─────────────────────────────────────────────────────────────────────────────
 DEVICE = torch.device("cpu")
 
-_classifier: ClassifierCNN | None = None
-_segmenter:  UNet          | None = None
+_classifier = None
+_segmenter  = None
+_predict_fn = None
 
 
 def load_models():
     """
-    Called ONCE at FastAPI startup (lifespan hook in main.py).
-    Loads both models into RAM and keeps them there for all requests.
-    This is the key fix for Render free tier OOM crashes.
+    Called ONCE at FastAPI startup.
+    Imports are INSIDE this function — so nothing heavy runs at import time.
     """
-    global _classifier, _segmenter
+    global _classifier, _segmenter, _predict_fn
+
+    # ✅ Import heavy modules only here — not at file load time
+    from final_model_v2 import ClassifierCNN, UNet, predict as _predict
+    _predict_fn = _predict
 
     if not CLASSIFIER_PATH.exists():
         raise RuntimeError(f"Classifier not found: {CLASSIFIER_PATH}")
@@ -258,9 +263,9 @@ def load_models():
 
 
 def get_models():
-    if _classifier is None or _segmenter is None:
+    if _classifier is None or _segmenter is None or _predict_fn is None:
         raise RuntimeError("Models not loaded — load_models() must run at startup")
-    return _classifier, _segmenter
+    return _classifier, _segmenter, _predict_fn
 
 
 # ── Cloudinary Upload Helper ──────────────────────────────────────────────────
@@ -307,8 +312,7 @@ async def stroke_predict_file(
             detail="Only PNG, JPG, and JPEG CT images are allowed.",
         )
 
-    # ✅ Get models from memory — no torch.load() here
-    classifier, segmenter = get_models()
+    classifier, segmenter, predict = get_models()
 
     tmp_input_dir  = tempfile.mkdtemp(prefix="stroke_input_")
     tmp_output_dir = tempfile.mkdtemp(prefix="stroke_output_")
@@ -326,7 +330,6 @@ async def stroke_predict_file(
 
         print(f"[Model] Running inference | report_id={report_id}")
 
-        # ✅ Pass pre-loaded models directly — fast, no reload
         result = predict(
             img_path=str(input_path),
             out_dir=tmp_output_dir,

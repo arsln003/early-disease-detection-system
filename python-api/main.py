@@ -132,42 +132,31 @@
 #     return await stroke_predict_file(file=file, report_id=report_id)
 
 
+
+
+
 import os
 from contextlib import asynccontextmanager
 from typing import List
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LIFESPAN — models load hote hain ONCE at startup
+# LIFESPAN
 # ─────────────────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ✅ Font cache pehle build karo — import karte hi ho jaata hai
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(1, 1, figsize=(1, 1))
-    plt.close(fig)
-    print("[Startup] ✅ Matplotlib font cache ready")
-
-    print("[Startup] Loading stroke models...")
+    # ✅ stroke_model import bhi yahan — file level pe nahi
     from stroke_model import load_models
+    print("[Startup] Loading stroke models...")
     load_models()
-    print("[Startup] ✅ All models ready")
-
+    print("[Startup] ✅ Ready")
     yield
-
-    # ── Shutdown ──────────────────────────────────────────────────────────────
-    print("[Shutdown] Server shutting down")
+    print("[Shutdown] Done")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# APP
-# ─────────────────────────────────────────────────────────────────────────────
 app = FastAPI(title="Unified Early Disease Detection API", lifespan=lifespan)
 
 app.add_middleware(
@@ -177,17 +166,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Static folders — only created if they exist (safe on clean deploy)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-_patient_output = os.path.join(BASE_DIR, "patient_output")
-if os.path.exists(_patient_output):
-    app.mount("/patient_output", StaticFiles(directory=_patient_output), name="patient_output")
-
-_stroke_output = os.path.join(BASE_DIR, "stroke_output")
-if os.path.exists(_stroke_output):
-    app.mount("/stroke_output", StaticFiles(directory=_stroke_output), name="stroke_output")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -206,21 +184,18 @@ def health():
     return {"status": "ok"}
 
 
-# ── OCR ───────────────────────────────────────────────────────────────────────
 @app.post("/ocr")
 async def ocr_endpoint(file: UploadFile = File(...)):
     from ocr_model import ocr
     return await ocr(file)
 
 
-# ── Cardiovascular ────────────────────────────────────────────────────────────
 @app.post("/predict")
 def cardio_predict(data: dict):
     from cardio_model import predict, CardioInput
     return predict(CardioInput(**data))
 
 
-# ── CADICA ────────────────────────────────────────────────────────────────────
 @app.post("/cadica/predict")
 async def cadica_predict_endpoint(
     files: List[UploadFile] = File(...),
@@ -249,7 +224,6 @@ async def cadica_predict_endpoint(
     )
 
 
-# ── Stroke ────────────────────────────────────────────────────────────────────
 @app.post("/stroke/predict")
 async def stroke_predict_endpoint(
     file: UploadFile = File(...),
