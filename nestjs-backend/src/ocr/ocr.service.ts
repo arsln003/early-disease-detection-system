@@ -7,7 +7,7 @@ export class OcrService {
 
   async processFile(file: Express.Multer.File) {
     try {
-
+ const pythonApiUrl = process.env.PYTHON_API_URL;
       const formData = new FormData();
 
       formData.append('file', file.buffer, {
@@ -16,7 +16,7 @@ export class OcrService {
       });
 
       const response = await axios.post(
-        'http://localhost:8000/ocr',
+        `${pythonApiUrl}/ocr`,
         formData,
         {
           headers: {
