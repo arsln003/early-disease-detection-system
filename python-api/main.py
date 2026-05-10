@@ -134,30 +134,14 @@
 
 
 
-
 import os
-from contextlib import asynccontextmanager
 from typing import List
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# LIFESPAN
-# ─────────────────────────────────────────────────────────────────────────────
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # ✅ stroke_model import bhi yahan — file level pe nahi
-    from stroke_model import load_models
-    print("[Startup] Loading stroke models...")
-    load_models()
-    print("[Startup] ✅ Ready")
-    yield
-    print("[Shutdown] Done")
-
-
-app = FastAPI(title="Unified Early Disease Detection API", lifespan=lifespan)
+# ✅ NO lifespan — models pehli request pe load honge (lazy)
+app = FastAPI(title="Unified Early Disease Detection API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -168,9 +152,6 @@ app.add_middleware(
 )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ROUTES
-# ─────────────────────────────────────────────────────────────────────────────
 @app.get("/")
 def home():
     return {

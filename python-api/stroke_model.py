@@ -179,23 +179,18 @@
 
 
 
-
-
 import gc
 import os
 import shutil
 import tempfile
 from pathlib import Path
+import threading
 
 import cloudinary
 import cloudinary.uploader
 import torch
 from dotenv import load_dotenv
 from fastapi import HTTPException, UploadFile
-
-# ✅ ClassifierCNN aur UNet ko top level pe import mat karo
-# — sirf load_models() ke andar import honge
-# from final_model_v2 import ClassifierCNN, UNet, predict  ← HATA DIYA
 
 load_dotenv()
 
@@ -224,16 +219,13 @@ DEVICE = torch.device("cpu")
 _classifier = None
 _segmenter  = None
 _predict_fn = None
+_model_lock = threading.Lock()   # concurrent requests safe
 
 
-def load_models():
-    """
-    Called ONCE at FastAPI startup.
-    Imports are INSIDE this function — so nothing heavy runs at import time.
-    """
+def _load_models_internal():
+    """Actually loads models — called once, protected by lock."""
     global _classifier, _segmenter, _predict_fn
 
-    # ✅ Import heavy modules only here — not at file load time
     from final_model_v2 import ClassifierCNN, UNet, predict as _predict
     _predict_fn = _predict
 
@@ -259,12 +251,22 @@ def load_models():
     print("[Model] ✅ Segmenter ready")
 
     gc.collect()
-    print("[Model] ✅ Both models loaded — memory cleaned")
+    print("[Model] ✅ Both models loaded")
 
 
 def get_models():
-    if _classifier is None or _segmenter is None or _predict_fn is None:
-        raise RuntimeError("Models not loaded — load_models() must run at startup")
+    """
+    ✅ LAZY LOAD — models load hote hain pehli request pe, phir cache rehte hain.
+    Server startup pe kuch load nahi hota — Render timeout issue fix.
+    """
+    global _classifier, _segmenter, _predict_fn
+
+    if _classifier is None:
+        with _model_lock:
+            if _classifier is None:   # double-check inside lock
+                print("[Model] First request — loading models now...")
+                _load_models_internal()
+
     return _classifier, _segmenter, _predict_fn
 
 
@@ -312,6 +314,7 @@ async def stroke_predict_file(
             detail="Only PNG, JPG, and JPEG CT images are allowed.",
         )
 
+    # ✅ Lazy load — pehli baar slow hoga, baad mein fast
     classifier, segmenter, predict = get_models()
 
     tmp_input_dir  = tempfile.mkdtemp(prefix="stroke_input_")
