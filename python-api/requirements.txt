@@ -1,62 +1,24 @@
-# fastapi
-# uvicorn
-# python-multipart
-
-# pillow
-# pytesseract
-# pdfplumber
-# pdf2image
-# opencv-python
-# numpy
-
-# google-genai
-# python-dotenv
-
-# torch
-# torchvision
-
-# matplotlib
-# pydantic
-# joblib
-# pandas
-# xgboost
-# scikit-learn
-# cloudinary
-
-
-# ── Web Framework ─────────────────────────────────────────────────────────────
 fastapi
-uvicorn[standard]
+uvicorn
 python-multipart
 
-# ── Image Processing ──────────────────────────────────────────────────────────
 pillow
-opencv-python-headless    # ✅ opencv-python → opencv-python-headless (saves ~200MB)
-
-# ── OCR ───────────────────────────────────────────────────────────────────────
 pytesseract
 pdfplumber
 pdf2image
-
-# ── ML / Data ─────────────────────────────────────────────────────────────────
+opencv-python
 numpy
+
+google-genai
+python-dotenv
+
+torch
+torchvision
+
+matplotlib
 pydantic
 joblib
 pandas
 xgboost
 scikit-learn
-
-# ── Deep Learning ─────────────────────────────────────────────────────────────
-torch
-torchvision
-
-# ── Google AI ─────────────────────────────────────────────────────────────────
-google-genai
-
-# ── Cloudinary ────────────────────────────────────────────────────────────────
 cloudinary
-
-# ── Env ───────────────────────────────────────────────────────────────────────
-python-dotenv
-
-# ✅ matplotlib HATA DIYA — final_model_v2.py ab pure PIL use karta hai
