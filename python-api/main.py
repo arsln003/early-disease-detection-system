@@ -146,13 +146,20 @@ from fastapi.staticfiles import StaticFiles
 # ─────────────────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── Startup ───────────────────────────────────────────────────────────────
-    print("[Startup] Loading stroke models into memory...")
+    # ✅ Font cache pehle build karo — import karte hi ho jaata hai
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(1, 1, figsize=(1, 1))
+    plt.close(fig)
+    print("[Startup] ✅ Matplotlib font cache ready")
+
+    print("[Startup] Loading stroke models...")
     from stroke_model import load_models
     load_models()
-    print("[Startup] ✅ All models ready — server accepting requests")
+    print("[Startup] ✅ All models ready")
 
-    yield  # ← server runs here
+    yield
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     print("[Shutdown] Server shutting down")

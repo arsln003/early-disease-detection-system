@@ -286,16 +286,16 @@
 # #     "C:/Users/DLL/OneDrive/Desktop/FYP/datasets/İNME VERİ SETİ/İskemi/PNG/10003.png"
 # # )
 
+
+
 import torch
 import torch.nn as nn
 import numpy as np
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from torchvision import models
-import matplotlib
-matplotlib.use('Agg')  # ✅ No display needed — saves memory on server
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+
+# ✅ Matplotlib BILKUL nahi — PIL se sab kuch — saves ~100MB RAM
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COLORMAP
@@ -404,7 +404,7 @@ def preprocess(img_path, img_size=256):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# VISUALISE & SAVE
+# VISUALISE & SAVE — pure PIL, no matplotlib
 # ─────────────────────────────────────────────────────────────────────────────
 def visualise_and_save(img_np, seg_mask, pred_class, confidence, img_path, out_dir):
     out_dir = Path(out_dir)
@@ -412,69 +412,77 @@ def visualise_and_save(img_np, seg_mask, pred_class, confidence, img_path, out_d
     stem = Path(img_path).stem
 
     H, W = seg_mask.shape
-    rgba = np.zeros((H, W, 4), dtype=np.uint8)
+    img_size = H
+
+    # ── Convert grayscale numpy → RGB PIL ────────────────────────────────────
+    ct_uint8 = (img_np * 255).astype(np.uint8)
+    ct_rgb   = np.stack([ct_uint8] * 3, axis=-1)   # (H, W, 3)
+    ct_pil   = Image.fromarray(ct_rgb, mode='RGB')
+
+    # ── Segmentation mask panel ───────────────────────────────────────────────
+    seg_colored = SEG_COLORS[seg_mask]               # (H, W, 3)
+    seg_pil     = Image.fromarray(seg_colored.astype(np.uint8), mode='RGB')
+
+    # ── Overlay panel — CT + lesion colour ───────────────────────────────────
+    overlay_np = ct_rgb.copy()
     for cls_id, color in enumerate(SEG_COLORS):
         if cls_id == 0:
             continue
         m = seg_mask == cls_id
-        rgba[m, :3] = color
-        rgba[m,  3] = 160
+        overlay_np[m] = (0.4 * overlay_np[m] + 0.6 * color).astype(np.uint8)
+    overlay_pil = Image.fromarray(overlay_np, mode='RGB')
 
-    fig, axes = plt.subplots(1, 3, figsize=(14, 4.5))
-    fig.suptitle(
-        f"Prediction: {CLASS_NAMES[pred_class]}  ({confidence*100:.1f}%)",
-        fontsize=13, fontweight='bold'
-    )
+    # ── Save flat overlay (the _overlay.png file) ─────────────────────────────
+    overlay_path = out_dir / f"{stem}_overlay.png"
+    overlay_pil.save(overlay_path)
+    print(f"✅ Saved → {overlay_path}")
 
-    axes[0].imshow(img_np, cmap='gray', vmin=0, vmax=1)
-    axes[0].set_title('Input CT', fontsize=10)
-    axes[0].axis('off')
+    # ── 3-panel result image ──────────────────────────────────────────────────
+    panel_w     = img_size
+    panel_h     = img_size
+    label_h     = 30
+    title_h     = 40
+    total_w     = panel_w * 3 + 4   # 2px gap between panels
+    total_h     = title_h + panel_h + label_h
 
-    axes[1].imshow(SEG_COLORS[seg_mask])
-    axes[1].set_title('Segmentation mask', fontsize=10)
-    axes[1].axis('off')
+    canvas = Image.new('RGB', (total_w, total_h), color=(30, 30, 30))
+    draw   = ImageDraw.Draw(canvas)
 
-    axes[2].imshow(img_np, cmap='gray', vmin=0, vmax=1)
-    axes[2].imshow(rgba)
-    axes[2].set_title('CT + lesion overlay', fontsize=10)
-    axes[2].axis('off')
+    # Title
+    title_text = f"Prediction: {CLASS_NAMES[pred_class]}  ({confidence*100:.1f}%)"
+    draw.text((total_w // 2, title_h // 2), title_text,
+              fill=(255, 255, 255), anchor="mm")
 
-    legend_handles = [
-        mpatches.Patch(color=np.array([0,   128, 0  ]) / 255, label='Ischemia'),
-        mpatches.Patch(color=np.array([255, 140, 0  ]) / 255, label='Hemorrhage'),
-    ]
-    fig.legend(handles=legend_handles, loc='lower center',
-               ncol=2, fontsize=10, frameon=False, bbox_to_anchor=(0.5, 0))
-    plt.tight_layout(rect=[0, 0.06, 1, 1])
+    # Paste panels
+    canvas.paste(ct_pil,      (0,              title_h))
+    canvas.paste(seg_pil,     (panel_w + 2,    title_h))
+    canvas.paste(overlay_pil, (panel_w * 2 + 4, title_h))
+
+    # Panel labels
+    labels = ['Input CT', 'Segmentation mask', 'CT + lesion overlay']
+    x_starts = [0, panel_w + 2, panel_w * 2 + 4]
+    for label, x in zip(labels, x_starts):
+        draw.text(
+            (x + panel_w // 2, title_h + panel_h + label_h // 2),
+            label, fill=(200, 200, 200), anchor="mm"
+        )
 
     fig_path = out_dir / f"{stem}_result.png"
-    plt.savefig(fig_path, dpi=150, bbox_inches='tight')
-    plt.close(fig)
+    canvas.save(fig_path)
     print(f"✅ Saved → {fig_path}")
-
-    ct_rgb = np.stack([img_np * 255] * 3, axis=-1).astype(np.uint8)
-    for cls_id, color in enumerate(SEG_COLORS):
-        if cls_id == 0:
-            continue
-        m = seg_mask == cls_id
-        ct_rgb[m] = (0.4 * ct_rgb[m] + 0.6 * color).astype(np.uint8)
-
-    overlay_path = out_dir / f"{stem}_overlay.png"
-    Image.fromarray(ct_rgb).save(overlay_path)
-    print(f"✅ Saved → {overlay_path}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PREDICT  ← accepts pre-loaded model instances, no torch.load() inside
+# PREDICT — accepts pre-loaded model instances
 # ─────────────────────────────────────────────────────────────────────────────
 def predict(
     img_path,
     out_dir,
-    classifier_model,    # ✅ pre-loaded ClassifierCNN instance
-    segmenter_model,     # ✅ pre-loaded UNet instance
+    classifier_model,
+    segmenter_model,
     device='cpu',
     img_size=256,
-    # legacy params so old call-sites don't hard-crash
+    # legacy params — ignored but kept so old call-sites don't crash
     classifier_path=None,
     segmenter_path=None,
 ):
