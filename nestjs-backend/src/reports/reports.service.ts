@@ -1188,7 +1188,7 @@ featureEntity.cardio      = safeInt(fields.cardio,      ['cardio', 'cardiovascul
 featureEntity.report      = savedReport;
 
     const savedFeature: Feature = await this.featureRepository.save(featureEntity);
-    
+
 const featureForPrediction: Feature = {
   ...savedFeature,
   cholesterol: this.remapCholesterol(savedFeature.cholesterol),
@@ -1197,14 +1197,23 @@ const featureForPrediction: Feature = {
     // ── 6. AI Prediction ────────────────────────────────────────────────────
     const aiPredictionResult = await this.runAiPrediction(savedReport, featureForPrediction);
 
-    // ── 7. Notify assigned doctor ───────────────────────────────────────────
-    const notificationResult = await this.notifyAssignedDoctor({
-      patientId,
-      patient,
-      radiologist,
-      savedReport,
-      aiPredictionResult,
-    });
+
+
+  // ── 7. Notify assigned doctor (sirf High Risk pe) ──────────────────────
+let notificationResult: NotificationResult = { sent: false, reason: 'Low risk — no notification sent' };
+
+if (
+  aiPredictionResult.generated === true &&
+  aiPredictionResult.aiResult.prediction === 1  // ← aiResult ke andar
+) {
+  notificationResult = await this.notifyAssignedDoctor({
+    patientId,
+    patient,
+    radiologist,
+    savedReport,
+    aiPredictionResult,
+  });
+}
 
     return {
       message: this.buildSuccessMessage(aiPredictionResult, notificationResult),

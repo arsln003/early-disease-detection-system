@@ -26,8 +26,8 @@ export class FirebaseService implements OnModuleInit {
     const message: admin.messaging.Message = {
       token: payload.fcmToken,
       notification: {
-       title: '🩻 New Report & Prediction Ready',
-  body: `Report and AI prediction for ${payload.patientName} are ready.`,
+       title: `🩺 High-Risk Alert: ${payload.patientName}`,
+  body: `🚨 Urgent: High-risk factors detected in ${payload.patientName}'s report. Immediate follow-up advised.`,
       },
       data: {
         reportId: String(payload.reportId),
