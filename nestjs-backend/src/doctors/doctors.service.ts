@@ -147,8 +147,101 @@ async getAssignedPatients(doctorId: number): Promise<any> {
 
 
 
+// // get assigned patient info
+// // doctor → assignments → patient → reports → aiResult
+// async getAssignedPatientsWithDetails(
+//   doctorId: number,
+//   severity: 'all' | 'critical' | 'moderate' | 'normal' = 'all',
+// ): Promise<any[]> {
+//   // 1) Ensure doctor exists
+//   const doctor = await this.doctorRepository.findOne({
+//     where: { doctorid: doctorId },
+//   });
+
+//   if (!doctor) {
+//     throw new NotFoundException(`Doctor with id ${doctorId} not found`);
+//   }
+
+//   // 2) Fetch assignments with nested relations
+//   const assignments = await this.assignmentRepository.find({
+//     where: { doctor: { doctorid: doctorId } },
+//     relations: ['patient', 'patient.reports', 'patient.reports.aiResult'],
+//     order: { assignedat: 'DESC' },
+//   });
+
+//   // helper to pick category by risk %
+//   const classifyRisk = (risk: number): 'Normal' | 'Moderate' | 'Critical' => {
+//     if (risk < 50) return 'Normal';
+//     if (risk <= 75) return 'Moderate';
+//     return 'Critical';
+//   };
+
+//   const enhancedAssignments = assignments
+//     .map((assignment) => {
+//       let patientRiskCategory: string | null = null;
+
+//       assignment.patient.reports = assignment.patient.reports.map((report) => {
+//         const ai = report.aiResult;
+
+//         if (ai && ai.probability != null) {
+//           const risk = Number(ai.probability)*100; // convert to percentage
+//           const riskCategory = classifyRisk(risk);
+
+//           // decide patient-level category (take highest severity)
+//           const rank: Record<string, number> = {
+//             Normal: 1,
+//             Moderate: 2,
+//             Critical: 3,
+//           };
+
+//           if (
+//             !patientRiskCategory ||
+//             rank[riskCategory] > (rank[patientRiskCategory] || 0)
+//           ) {
+//             patientRiskCategory = riskCategory;
+//           }
+
+//           return {
+//             ...report,
+//             aiResult: {
+//               ...ai,
+//               riskCategory,
+//             },
+//           };
+//         }
+
+//         return {
+//           ...report,
+//           aiResult: {
+//             ...ai,
+//             riskCategory: 'No AI Result',
+//           },
+//         };
+//       });
+
+//       const { doctor, ...cleanedAssignment } = assignment as any;
+
+//       return {
+//         ...cleanedAssignment,
+//         patientRiskCategory: patientRiskCategory || 'No AI Result',
+//       };
+//     })
+//     // 3) apply severity filter
+//     .filter((item) => {
+//       if (severity === 'all') return true;
+
+//       const cat = (item.patientRiskCategory || '').toLowerCase();
+//       return cat === severity.toLowerCase();
+//     });
+
+//   return enhancedAssignments;
+// }
+
+
 // get assigned patient info
 // doctor → assignments → patient → reports → aiResult
+// doctor → assignments → patient → cadicaVideoReports → cadicaResult
+// doctor → assignments → patient → strokeReports → strokeResult
 async getAssignedPatientsWithDetails(
   doctorId: number,
   severity: 'all' | 'critical' | 'moderate' | 'normal' = 'all',
@@ -165,7 +258,15 @@ async getAssignedPatientsWithDetails(
   // 2) Fetch assignments with nested relations
   const assignments = await this.assignmentRepository.find({
     where: { doctor: { doctorid: doctorId } },
-    relations: ['patient', 'patient.reports', 'patient.reports.aiResult'],
+    relations: [
+      'patient',
+      'patient.reports',
+      'patient.reports.aiResult',
+      'patient.cadicaVideoReports',
+      'patient.cadicaVideoReports.cadicaResult',
+      'patient.strokeReports',
+      'patient.strokeReports.strokeResult',
+    ],
     order: { assignedat: 'DESC' },
   });
 
@@ -180,11 +281,12 @@ async getAssignedPatientsWithDetails(
     .map((assignment) => {
       let patientRiskCategory: string | null = null;
 
+      // Handling reports and AI results
       assignment.patient.reports = assignment.patient.reports.map((report) => {
         const ai = report.aiResult;
 
         if (ai && ai.probability != null) {
-          const risk = Number(ai.probability)*100; // convert to percentage
+          const risk = Number(ai.probability) * 100; // convert to percentage
           const riskCategory = classifyRisk(risk);
 
           // decide patient-level category (take highest severity)
@@ -219,6 +321,24 @@ async getAssignedPatientsWithDetails(
         };
       });
 
+      // Handling Cadica Video Reports and Results
+      assignment.patient.cadicaVideoReports = assignment.patient.cadicaVideoReports.map((cadicaVideoReport) => {
+        const cadicaResult = cadicaVideoReport.cadicaResult;
+        return {
+          ...cadicaVideoReport,
+          cadicaResult: cadicaResult || null,
+        };
+      });
+
+      // Handling Stroke Reports and Results
+      assignment.patient.strokeReports = assignment.patient.strokeReports.map((strokeReport) => {
+        const strokeResult = strokeReport.strokeResult;
+        return {
+          ...strokeReport,
+          strokeResult: strokeResult || null,
+        };
+      });
+
       const { doctor, ...cleanedAssignment } = assignment as any;
 
       return {
@@ -226,7 +346,7 @@ async getAssignedPatientsWithDetails(
         patientRiskCategory: patientRiskCategory || 'No AI Result',
       };
     })
-    // 3) apply severity filter
+    // 3) Apply severity filter
     .filter((item) => {
       if (severity === 'all') return true;
 
@@ -236,7 +356,6 @@ async getAssignedPatientsWithDetails(
 
   return enhancedAssignments;
 }
-
 
 
 //save fcm token for doctor
