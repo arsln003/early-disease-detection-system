@@ -80,18 +80,18 @@ export class RadiologistController {
     );
   }
   // ── Reports ────────────────────────────────────────────────────────────
-  @Get('reports/:patientId')
-  getReportsByPatientId(
-    @Param('patientId', ParseIntPipe) patientId: number,
-    @Req() req: any,
-  ) {
-    const radiologistId: number = req.user.id;  // ✅ clean, no fallback chain needed
+  // @Get('reports/:patientId')
+  // getReportsByPatientId(
+  //   @Param('patientId', ParseIntPipe) patientId: number,
+  //   @Req() req: any,
+  // ) {
+  //   const radiologistId: number = req.user.id;  // ✅ clean, no fallback chain needed
 
-    if (!radiologistId) {
-      throw new UnauthorizedException('Invalid radiologist token');  // ✅ NestJS exception
-    }
-    return this.reportService.getReportsByPatientId(patientId);
-  }
+  //   if (!radiologistId) {
+  //     throw new UnauthorizedException('Invalid radiologist token');  // ✅ NestJS exception
+  //   }
+  //   return this.reportService.getReportsByPatientId(patientId);
+  // }
 
 
   //get all reports 
@@ -107,13 +107,13 @@ getAllCadicaVideoReports() {
   return this.cadicaService.getAllCadicaVideoReports();
 }
 
-// ── CADICA Video Reports by Patient ID ─────────────────────────────
-@Get('patients/:patientId/cadica-video-reports')
-getCadicaVideoReportsByPatientId(
-  @Param('patientId', ParseIntPipe) patientId: number,
-) {
-  return this.cadicaService.getCadicaVideoReportsByPatientId(patientId);
-}
+// // ── CADICA Video Reports by Patient ID ─────────────────────────────
+// @Get('patients/:patientId/cadica-video-reports')
+// getCadicaVideoReportsByPatientId(
+//   @Param('patientId', ParseIntPipe) patientId: number,
+// ) {
+//   return this.cadicaService.getCadicaVideoReportsByPatientId(patientId);
+// }
 
 // ──get all Stroke Reports ─────────────────────────────────────────────────
 @Get('all-stroke-reports')
@@ -122,13 +122,13 @@ getAllStrokeReports() {
 }
 
 
-// ── Stroke Reports by Patient ID ─────────────────────────────────────
-@Get('patients/:patientId/stroke-reports')
-getStrokeReportsByPatientId(
-  @Param('patientId', ParseIntPipe) patientId: number,
-) {
-  return this.strokeService.getStrokeReportsByPatientId(patientId);
-}
+// // ── Stroke Reports by Patient ID ─────────────────────────────────────
+// @Get('patients/:patientId/stroke-reports')
+// getStrokeReportsByPatientId(
+//   @Param('patientId', ParseIntPipe) patientId: number,
+// ) {
+//   return this.strokeService.getStrokeReportsByPatientId(patientId);
+// }
 
 
 

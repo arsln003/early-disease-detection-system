@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards, ParseIntPipe, Req, BadRequestException, Patch, Body, Post, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards, ParseIntPipe, Req, BadRequestException, Patch, Body, Post, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
 import { DoctorsService } from './doctors.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -7,6 +7,7 @@ import { UpdateDoctorFcmTokenDto } from '../admin/dto/update-doctor-fcmtoken.dto
 import { PredictionService } from 'src/prediction/prediction.service';
 import { CadicaService } from 'src/cadica/cadica.service';
 import { StrokeService } from 'src/stroke/stroke.service';
+import { ReportsService } from 'src/reports/reports.service';
 @Roles('doctor')                        // ✅ lowercase matches JWT payload
 @UseGuards(JwtAuthGuard, RolesGuard)    // ✅ use JwtAuthGuard, not AuthGuard('jwt')
 @Controller('doctors')
@@ -15,6 +16,7 @@ export class DoctorsController {
               private readonly predictionService: PredictionService,
                 private readonly cadicaService: CadicaService,
                  private readonly strokeService: StrokeService,
+                  private readonly reportService: ReportsService, 
 
   ) {}
 
@@ -48,15 +50,6 @@ export class DoctorsController {
     return this.doctorsService.saveFcmToken(req.user.id, dto.fcmtoken);
   }
 
-// ── Prediction ─────────────────────────────────────────────────────────
-// @Post('predict/:reportId')
-// generatePrediction(
-//   @Param('reportId', ParseIntPipe) reportId: number,
-//   @Req() req: any,
-// ) {
-//   const doctorId: number = req.user.id;
-//   return this.predictionService.predictFromFeature(reportId, doctorId);
-// }
 
 @Get('prediction/:reportId')
 getPrediction(
@@ -114,5 +107,44 @@ getStrokePrediction(
     strokeReportId,
   );
 }
+
+
+//get all reports by patient id for logged in doctor
+// Get all reports by patient id for logged in doctor
+@Get('all-reports/:patientId')
+async getReportsByPatientId(
+  @Param('patientId', ParseIntPipe) patientId: number,
+  @Req() req: any,
+) {
+  const doctorId: number = req.user.id;  // ✅ clean, no fallback chain needed
+
+  if (!doctorId) {
+    throw new UnauthorizedException('Invalid doctor token');  // Handle invalid doctor token
+  }
+  try {
+    return await this.reportService.getReportsByPatientId(doctorId, patientId); // Fetch reports using service
+  } catch (error) {
+    // Log and throw a generic server error if something goes wrong
+    throw new InternalServerErrorException('Error fetching reports', error.message);
+  }
+}
+
+
+// ── CADICA Video Reports by Patient ID ─────────────────────────────
+@Get('/all-cadica-video-reports/:patientId')
+async getCadicaVideoReportsByPatientId(
+  @Param('patientId', ParseIntPipe) patientId: number,  // Capture patientId from the request
+) {
+  return this.cadicaService.getCadicaVideoReportsByPatientId(patientId);  // Call service to get CADICA reports
+}
+
+
+@Get('all-stroke-reports/:patientId')
+async getStrokeReportsByPatientId(
+  @Param('patientId', ParseIntPipe) patientId: number,  // Capture patientId from the route
+) {
+  return this.strokeService.getStrokeReportsByPatientId(patientId);  // Call the service method
+}
+
 
 }

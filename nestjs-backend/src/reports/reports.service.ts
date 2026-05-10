@@ -875,100 +875,127 @@ export class ReportsService {
 
     return reports;
   }
-/** Get all reports for a specific patient with assigned doctor */
-async getReportsByPatientId(patientId: number) {
+
+// Get all reports for a specific patient with assigned doctor
+async getReportsByPatientId(doctorId: number, patientId: number) {
   if (!patientId || Number.isNaN(Number(patientId))) {
     throw new BadRequestException('Valid patientId is required');
   }
 
-  const reports = await this.reportsRepository.find({
-    where: {
-      patient: { patientid: patientId },
-    },
-    relations: [
-      'patient',
-      'patient.assignments',
-      'patient.assignments.doctor',
-      'radiologist',
-    ],
-    order: {
-      uploadedat: 'ASC',
-    },
+  // 1. Check if the patient exists in the database
+  const patient = await this.patientRepository.findOne({
+    where: { patientid: patientId },
   });
 
-  if (!reports.length) {
-    throw new NotFoundException(
-      `No reports found for patient with ID ${patientId}`,
-    );
+  if (!patient) {
+    throw new NotFoundException(`Patient with ID ${patientId} not found`);  // If patient does not exist, return error
   }
 
-  return {
-    message: 'Reports fetched successfully',
-    total: reports.length,
-    reports: reports.map((report) => {
-      const assignments = report.patient?.assignments || [];
+  try {
+    // 2. Fetch reports for the specific patient, assigned to the doctor
+    const reports = await this.reportsRepository.find({
+      where: {
+        patient: {
+          patientid: patientId,  // Filter reports by patient ID
+          assignments: {
+            doctor: { doctorid: doctorId },  // Filter reports by assigned doctor
+          },
+        },
+      },
+      relations: [
+        'patient',
+        'patient.assignments',
+        'patient.assignments.doctor',
+        'radiologist',
+        'aiResult',  // Fetch AI result relation
+      ],
+      order: {
+        uploadedat: 'DESC',  // Ensure most recent reports are fetched first
+      },
+    });
 
-      const latestAssignment = assignments
-        .filter((assignment) => assignment.doctor)
-        .sort((a, b) => {
-          const dateA = a.assignedat ? new Date(a.assignedat).getTime() : 0;
-          const dateB = b.assignedat ? new Date(b.assignedat).getTime() : 0;
+    if (!reports.length) {
+      throw new NotFoundException(
+        `No reports found for patient with ID ${patientId}`,
+      );  // Handle case where no reports are found
+    }
 
-          if (dateB !== dateA) return dateB - dateA;
+    return {
+      message: 'Reports fetched successfully',
+      total: reports.length,
+      reports: reports.map((report) => {
+        const assignments = report.patient?.assignments || [];
 
-          return b.assignmentid - a.assignmentid;
-        })[0];
+        // Get the most recent doctor assignment for the patient
+        const latestAssignment = assignments
+          .filter((assignment) => assignment.doctor)
+          .sort((a, b) => {
+            const dateA = a.assignedat ? new Date(a.assignedat).getTime() : 0;
+            const dateB = b.assignedat ? new Date(b.assignedat).getTime() : 0;
 
-      const assignedDoctor = latestAssignment?.doctor
-        ? {
-            doctorid: latestAssignment.doctor.doctorid,
-            fullname: latestAssignment.doctor.fullname,
-            specialization: latestAssignment.doctor.specialization,
-            email: latestAssignment.doctor.email,
-            experience: latestAssignment.doctor.experience,
-            contactnumber: latestAssignment.doctor.contactnumber,
-            status: latestAssignment.doctor.status,
-            assignedat: latestAssignment.assignedat,
-          }
-        : null;
+            if (dateB !== dateA) return dateB - dateA;
+            return b.assignmentid - a.assignmentid;
+          })[0];
 
-      return {
-        reportid: report.reportid,
-        filename: report.filename,
-        filepath: report.filepath,
-        comment: report.comment,
-        uploadedat: report.uploadedat,
-
-        patient: report.patient
+        const assignedDoctor = latestAssignment?.doctor
           ? {
-              patientid: report.patient.patientid,
-              fullname: report.patient.fullname,
-              email: report.patient.email,
-              age: report.patient.age,
-              gender: report.patient.gender,
-              contactnumber: report.patient.contactnumber,
-              address: report.patient.address,
-              createdat: report.patient.createdat,
+              doctorid: latestAssignment.doctor.doctorid,
+              fullname: latestAssignment.doctor.fullname,
+              specialization: latestAssignment.doctor.specialization,
+              email: latestAssignment.doctor.email,
+              experience: latestAssignment.doctor.experience,
+              contactnumber: latestAssignment.doctor.contactnumber,
+              status: latestAssignment.doctor.status,
+              assignedat: latestAssignment.assignedat,
             }
-          : null,
+          : null;
 
-        radiologist: report.radiologist
-          ? {
-              radiologistid: report.radiologist.radiologistid,
-              fullname: report.radiologist.fullname,
-              email: report.radiologist.email,
-              contactnumber: report.radiologist.contactnumber,
-              status: report.radiologist.status,
-              createdat: report.radiologist.createdat,
-            }
-          : null,
+        return {
+          reportid: report.reportid,
+          filename: report.filename,
+          filepath: report.filepath,
+          comment: report.comment,
+          uploadedat: report.uploadedat,
 
-        assignedDoctor,
-      };
-    }),
-  };
+          // Spread patient properties here (no duplicate key)
+          ...report.patient,
+
+          // Radiologist info
+          radiologist: report.radiologist
+            ? {
+                radiologistid: report.radiologist.radiologistid,
+                fullname: report.radiologist.fullname,
+                email: report.radiologist.email,
+                contactnumber: report.radiologist.contactnumber,
+                status: report.radiologist.status,
+                createdat: report.radiologist.createdat,
+              }
+            : null,
+
+          // Assigned doctor info
+          assignedDoctor,
+
+          // AI result for the report
+          aiResult: report.aiResult
+            ? {
+                airesultid: report.aiResult.airesultid,
+                prediction: report.aiResult.prediction,
+                probability: report.aiResult.probability,
+                classification: report.aiResult.classification,
+                keyparameters: report.aiResult.keyparameters,
+                remarks: report.aiResult.remarks,
+                modelname: report.aiResult.modelname,
+                processedat: report.aiResult.processedat,
+              }
+            : null,
+        };
+      }),
+    };
+  } catch (error) {
+    // Handle any other unexpected errors
+    throw new InternalServerErrorException('Error fetching reports', error.message);
+  }
 }
-
 /** Get all reports without AI result and feature, but with assigned doctor */
 async getAllReports() {
   const reports = await this.reportsRepository.find({

@@ -454,20 +454,20 @@ async getCadicaVideoReportsByPatientId(patientId: number) {
     throw new BadRequestException('Valid patientId is required');
   }
 
+  // Fetch CADICA video reports for the specific patient, including CadicaResult
   const cadicaVideoReports = await this.cadicaVideoReportRepository.find({
     where: {
-      patient: {
-        patientid: patientId,
-      },
+      patient: { patientid: patientId },
     },
     relations: [
       'patient',
       'patient.assignments',
       'patient.assignments.doctor',
       'radiologist',
+      'cadicaResult',  // Include the CADICA result in the response
     ],
     order: {
-      uploadedat: 'ASC',
+      uploadedat: 'DESC',  // Ensure the most recent reports are fetched first
     },
   });
 
@@ -484,6 +484,7 @@ async getCadicaVideoReportsByPatientId(patientId: number) {
     cadicaVideoReports: cadicaVideoReports.map((report) => {
       const assignments = report.patient?.assignments || [];
 
+      // Get the most recent doctor assignment for the patient
       const latestAssignment = assignments
         .filter((assignment) => assignment.doctor)
         .sort((a, b) => {
@@ -491,7 +492,6 @@ async getCadicaVideoReportsByPatientId(patientId: number) {
           const dateB = b.assignedat ? new Date(b.assignedat).getTime() : 0;
 
           if (dateB !== dateA) return dateB - dateA;
-
           return b.assignmentid - a.assignmentid;
         })[0];
 
@@ -515,6 +515,7 @@ async getCadicaVideoReportsByPatientId(patientId: number) {
         status: report.status,
         uploadedat: report.uploadedat,
 
+        // Include patient details
         patient: report.patient
           ? {
               patientid: report.patient.patientid,
@@ -528,6 +529,7 @@ async getCadicaVideoReportsByPatientId(patientId: number) {
             }
           : null,
 
+        // Include radiologist details
         radiologist: report.radiologist
           ? {
               radiologistid: report.radiologist.radiologistid,
@@ -539,15 +541,33 @@ async getCadicaVideoReportsByPatientId(patientId: number) {
             }
           : null,
 
+        // Include assigned doctor details
         assignedDoctor,
+
+        // Include CadicaResult details
+        cadicaResult: report.cadicaResult
+          ? {
+              cadicaresultid: report.cadicaResult.cadicaresultid,
+              verdict: report.cadicaResult.verdict,
+              confidence: report.cadicaResult.confidence,
+              weightedAvgProb: report.cadicaResult.weightedAvgProb,
+              mostSuspiciousVideo: report.cadicaResult.mostSuspiciousVideo,
+              mostSuspiciousProb: report.cadicaResult.mostSuspiciousProb,
+              videosProcessed: report.cadicaResult.videosProcessed,
+              videosSkipped: report.cadicaResult.videosSkipped,
+              rawResult: report.cadicaResult.rawResult,
+              summaryImage: report.cadicaResult.summaryImage,
+              summaryImageUrl: report.cadicaResult.summaryImageUrl,
+              gradcamImages: report.cadicaResult.gradcamImages,
+              perVideo: report.cadicaResult.perVideo,
+              modelname: report.cadicaResult.modelname,
+              processedat: report.cadicaResult.processedat,
+            }
+          : null,
       };
     }),
   };
 }
-
-
-
-
 
 
 

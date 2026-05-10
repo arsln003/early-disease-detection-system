@@ -365,20 +365,26 @@ export class StrokeService {
   // ─────────────────────────────────────────────────────────────────────────
   // GET STROKE REPORTS BY PATIENT ID
   // ─────────────────────────────────────────────────────────────────────────
+   // Get stroke reports by patient ID
   async getStrokeReportsByPatientId(patientId: number) {
     if (!patientId || Number.isNaN(Number(patientId))) {
       throw new BadRequestException('Valid patientId is required');
     }
 
     const strokeReports = await this.strokeReportRepository.find({
-      where:     { patient: { patientid: patientId } },
+      where: {
+        patient: { patientid: patientId },  // Filter by patient ID
+      },
       relations: [
         'patient',
         'patient.assignments',
         'patient.assignments.doctor',
         'radiologist',
+        'strokeResult',  // Include StrokeResult relation here
       ],
-      order: { uploadedat: 'ASC' },
+      order: {
+        uploadedat: 'DESC',  // Order by uploaded date to get the most recent reports first
+      },
     });
 
     if (!strokeReports.length) {
@@ -388,16 +394,14 @@ export class StrokeService {
     }
 
     return {
-      message:      'Stroke reports fetched successfully',
+      message: 'Stroke reports fetched successfully',
       patientId,
-      total:        strokeReports.length,
-      strokeReports: strokeReports.map((report) => this.formatReportWithDoctor(report)),
+      total: strokeReports.length,
+      strokeReports: strokeReports.map((report) => this.formatReportWithDoctor(report)),  // Calling the helper function
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // PRIVATE HELPER
-  // ─────────────────────────────────────────────────────────────────────────
+  // Private helper function to format the report with doctor info
   private formatReportWithDoctor(report: StrokeReport) {
     const assignments = report.patient?.assignments || [];
 
@@ -412,52 +416,73 @@ export class StrokeService {
 
     const assignedDoctor = latestAssignment?.doctor
       ? {
-          doctorid:       latestAssignment.doctor.doctorid,
-          fullname:       latestAssignment.doctor.fullname,
+          doctorid: latestAssignment.doctor.doctorid,
+          fullname: latestAssignment.doctor.fullname,
           specialization: latestAssignment.doctor.specialization,
-          email:          latestAssignment.doctor.email,
-          experience:     latestAssignment.doctor.experience,
-          contactnumber:  latestAssignment.doctor.contactnumber,
-          status:         latestAssignment.doctor.status,
-          assignedat:     latestAssignment.assignedat,
+          email: latestAssignment.doctor.email,
+          experience: latestAssignment.doctor.experience,
+          contactnumber: latestAssignment.doctor.contactnumber,
+          status: latestAssignment.doctor.status,
+          assignedat: latestAssignment.assignedat,
         }
       : null;
 
     return {
       strokereportid: report.strokereportid,
-      filename:       report.filename,
-      filepath:       report.filepath,   // Cloudinary input URL
-      mimetype:       report.mimetype,
-      size:           report.size,
-      comment:        report.comment,
-      status:         report.status,
-      uploadedat:     report.uploadedat,
+      filename: report.filename,
+      filepath: report.filepath,   // Cloudinary URL for the file
+      mimetype: report.mimetype,
+      size: report.size,
+      comment: report.comment,
+      status: report.status,
+      uploadedat: report.uploadedat,
 
       patient: report.patient
         ? {
-            patientid:     report.patient.patientid,
-            fullname:      report.patient.fullname,
-            email:         report.patient.email,
-            age:           report.patient.age,
-            gender:        report.patient.gender,
+            patientid: report.patient.patientid,
+            fullname: report.patient.fullname,
+            email: report.patient.email,
+            age: report.patient.age,
+            gender: report.patient.gender,
             contactnumber: report.patient.contactnumber,
-            address:       report.patient.address,
-            createdat:     report.patient.createdat,
+            address: report.patient.address,
+            createdat: report.patient.createdat,
           }
         : null,
 
       radiologist: report.radiologist
         ? {
             radiologistid: report.radiologist.radiologistid,
-            fullname:      report.radiologist.fullname,
-            email:         report.radiologist.email,
+            fullname: report.radiologist.fullname,
+            email: report.radiologist.email,
             contactnumber: report.radiologist.contactnumber,
-            status:        report.radiologist.status,
-            createdat:     report.radiologist.createdat,
+            status: report.radiologist.status,
+            createdat: report.radiologist.createdat,
           }
         : null,
 
       assignedDoctor,
+
+      // Include StrokeResult details for the stroke report
+      strokeResult: report.strokeResult
+        ? {
+            strokeresultid: report.strokeResult.strokeresultid,
+            prediction: report.strokeResult.prediction,
+            predictionClass: report.strokeResult.predictionClass,
+            confidence: report.strokeResult.confidence,
+            probabilities: report.strokeResult.probabilities,
+            segmentationGenerated: report.strokeResult.segmentationGenerated,
+            resultImage: report.strokeResult.resultImage,
+            overlayImage: report.strokeResult.overlayImage,
+            resultImageUrl: report.strokeResult.resultImageUrl,
+            overlayImageUrl: report.strokeResult.overlayImageUrl,
+            pythonReportId: report.strokeResult.pythonReportId,
+            device: report.strokeResult.device,
+            rawResult: report.strokeResult.rawResult,
+            modelname: report.strokeResult.modelname,
+            processedat: report.strokeResult.processedat,
+          }
+        : null,
     };
   }
 }
