@@ -164,7 +164,7 @@ export class StrokeService {
       });
     }
 
-    // ── 5. Notify assigned doctor via FCM ────────────────────────────────────
+    // ── 5. Notify assigned doctor (sirf Ischemia ya Hemorrhage pe) ───────────
     const assignments = await this.assignmentRepository.find({
       where:     { patient: { patientid: patientId } },
       relations: ['doctor'],
@@ -175,40 +175,47 @@ export class StrokeService {
 
     let notification: Record<string, any> = {
       sent:   false,
-      reason: 'No doctor assigned to this patient',
+      reason: 'No notification needed — prediction is not Ischemia or Hemorrhage',
     };
 
-    if (doctor?.fcmtoken?.trim()) {
-      try {
-        await this.firebaseService.sendReportToDoctor({
-          fcmToken:        doctor.fcmtoken,
-          doctorName:      doctor.fullname,
-          patientName:     patient.fullname,
-          reportId:        savedStrokeReport.strokereportid,
-          radiologistName: radiologist.fullname,
-          comment:
-            comment?.trim() ||
-            `Stroke CT image prediction is ready for patient ${patient.fullname}.`,
-        });
+    const predictionClass = strokeModelResult?.prediction ?? '';
+const shouldNotify = predictionClass === 'Ischemia' || predictionClass === 'Hemorrhage';
 
+    if (shouldNotify) {
+      if (!doctor) {
+        notification = { sent: false, reason: 'No doctor assigned to this patient' };
+      } else if (!doctor.fcmtoken?.trim()) {
         notification = {
-          sent:         true,
-          sentToDoctor: doctor.fullname,
-          doctorId:     doctor.doctorid,
+          sent:   false,
+          reason: `Doctor "${doctor.fullname}" has no FCM token registered.`,
         };
-      } catch (error) {
-        notification = {
-          sent:                 false,
-          reason:               'Firebase notification failed',
-          firebaseErrorCode:    error?.errorInfo?.code ?? 'UNKNOWN',
-          firebaseErrorMessage: error?.message         ?? 'Unknown Firebase error',
-        };
+      } else {
+        try {
+          await this.firebaseService.sendReportToDoctor({
+            fcmToken:        doctor.fcmtoken,
+            doctorName:      doctor.fullname,
+            patientName:     patient.fullname,
+            reportId:        savedStrokeReport.strokereportid,
+            radiologistName: radiologist.fullname,
+            comment:
+              comment?.trim() ||
+              `Stroke CT prediction result: ${predictionClass} detected for patient ${patient.fullname}.`,
+          });
+
+          notification = {
+            sent:         true,
+            sentToDoctor: doctor.fullname,
+            doctorId:     doctor.doctorid,
+          };
+        } catch (error) {
+          notification = {
+            sent:                 false,
+            reason:               'Firebase notification failed',
+            firebaseErrorCode:    error?.errorInfo?.code ?? 'UNKNOWN',
+            firebaseErrorMessage: error?.message         ?? 'Unknown Firebase error',
+          };
+        }
       }
-    } else if (doctor) {
-      notification = {
-        sent:   false,
-        reason: `Doctor "${doctor.fullname}" has no FCM token registered.`,
-      };
     }
 
     // ── 6. Response ───────────────────────────────────────────────────────────

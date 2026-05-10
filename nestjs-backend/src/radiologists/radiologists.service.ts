@@ -326,16 +326,72 @@ async uploadCadicaVideosOnly(
   const savedCadicaVideoReport =
     await this.cadicaVideoReportRepository.save(cadicaVideoReport);
 
-  // ── Notify doctor via FCM ──────────────────────────────────────────────────
-  const assignments = await this.assignmentRepo.find({
-    where:     { patient: { patientid: patientId } },
-    relations: ['doctor'],
-    order:     { assignmentid: 'DESC' },
-  });
+  // // ── Notify doctor via FCM ──────────────────────────────────────────────────
+  // const assignments = await this.assignmentRepo.find({
+  //   where:     { patient: { patientid: patientId } },
+  //   relations: ['doctor'],
+  //   order:     { assignmentid: 'DESC' },
+  // });
 
-  const doctor = assignments[0]?.doctor;
+  // const doctor = assignments[0]?.doctor;
 
-  if (!doctor) {
+  // if (!doctor) {
+  //   return {
+  //     message:           'CADICA video report uploaded successfully',
+  //     patientId,
+  //     totalUploaded:     videos.length,
+  //     totalFailed:       failedFiles.length,
+  //     cadicaVideoReport: savedCadicaVideoReport,
+  //     failedFiles,
+  //     notification:      { sent: false, reason: 'No doctor assigned to this patient' },
+  //   };
+  // }
+
+  // if (!doctor.fcmtoken?.trim()) {
+  //   return {
+  //     message:           'CADICA video report uploaded successfully',
+  //     patientId,
+  //     totalUploaded:     videos.length,
+  //     totalFailed:       failedFiles.length,
+  //     cadicaVideoReport: savedCadicaVideoReport,
+  //     failedFiles,
+  //     notification:      {
+  //       sent:   false,
+  //       reason: `Doctor "${doctor.fullname}" has no FCM token registered.`,
+  //     },
+  //   };
+  // }
+
+  // try {
+  //   await this.firebaseService.sendReportToDoctor({
+  //     fcmToken:        doctor.fcmtoken,
+  //     doctorName:      doctor.fullname,
+  //     patientName:     patient.fullname,
+  //     reportId:        savedCadicaVideoReport.cadicavideoreportid,
+  //     radiologistName: radiologist.fullname,
+  //     comment:
+  //       comment?.trim() ||
+  //       `${videos.length} CADICA video(s) uploaded for patient ${patient.fullname}. Please review and run prediction.`,
+  //   });
+
+  //   return {
+  //     message:           'CADICA video report uploaded and sent to doctor successfully',
+  //     patientId,
+  //     totalUploaded:     videos.length,
+  //     totalFailed:       failedFiles.length,
+  //     cadicaVideoReport: savedCadicaVideoReport,
+  //     failedFiles,
+  //     notification:      { sent: true, sentToDoctor: doctor.fullname, doctorId: doctor.doctorid },
+  //   };
+  // } catch (error) {
+  //   if (
+  //     error?.errorInfo?.code === 'messaging/invalid-argument' ||
+  //     error?.errorInfo?.code === 'messaging/registration-token-not-registered'
+  //   ) {
+  //     doctor.fcmtoken = null;
+  //     await this.doctorRepo.save(doctor);
+  //   }
+
     return {
       message:           'CADICA video report uploaded successfully',
       patientId,
@@ -343,70 +399,8 @@ async uploadCadicaVideosOnly(
       totalFailed:       failedFiles.length,
       cadicaVideoReport: savedCadicaVideoReport,
       failedFiles,
-      notification:      { sent: false, reason: 'No doctor assigned to this patient' },
-    };
-  }
-
-  if (!doctor.fcmtoken?.trim()) {
-    return {
-      message:           'CADICA video report uploaded successfully',
-      patientId,
-      totalUploaded:     videos.length,
-      totalFailed:       failedFiles.length,
-      cadicaVideoReport: savedCadicaVideoReport,
-      failedFiles,
-      notification:      {
-        sent:   false,
-        reason: `Doctor "${doctor.fullname}" has no FCM token registered.`,
-      },
-    };
-  }
-
-  try {
-    await this.firebaseService.sendReportToDoctor({
-      fcmToken:        doctor.fcmtoken,
-      doctorName:      doctor.fullname,
-      patientName:     patient.fullname,
-      reportId:        savedCadicaVideoReport.cadicavideoreportid,
-      radiologistName: radiologist.fullname,
-      comment:
-        comment?.trim() ||
-        `${videos.length} CADICA video(s) uploaded for patient ${patient.fullname}. Please review and run prediction.`,
-    });
-
-    return {
-      message:           'CADICA video report uploaded and sent to doctor successfully',
-      patientId,
-      totalUploaded:     videos.length,
-      totalFailed:       failedFiles.length,
-      cadicaVideoReport: savedCadicaVideoReport,
-      failedFiles,
-      notification:      { sent: true, sentToDoctor: doctor.fullname, doctorId: doctor.doctorid },
-    };
-  } catch (error) {
-    if (
-      error?.errorInfo?.code === 'messaging/invalid-argument' ||
-      error?.errorInfo?.code === 'messaging/registration-token-not-registered'
-    ) {
-      doctor.fcmtoken = null;
-      await this.doctorRepo.save(doctor);
-    }
-
-    return {
-      message:           'CADICA video report uploaded successfully',
-      patientId,
-      totalUploaded:     videos.length,
-      totalFailed:       failedFiles.length,
-      cadicaVideoReport: savedCadicaVideoReport,
-      failedFiles,
-      notification:      {
-        sent:                 false,
-        reason:               'Firebase notification failed',
-        firebaseErrorCode:    error?.errorInfo?.code ?? 'UNKNOWN',
-        firebaseErrorMessage: error?.message         ?? 'Unknown Firebase error',
-      },
     };
   }
 }
 
-}
+
