@@ -717,6 +717,7 @@ export interface UploadAnalyzeResponse {
   notification: NotificationResult;
 }
 
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isValidFiniteNumber(value: any): boolean {
@@ -742,6 +743,9 @@ function validatePredictionPayload(payload: Record<string, any>): ValidationResu
     (field) => payload[field] === null || payload[field] === undefined,
   );
 
+
+
+  
   const invalidFields: InvalidField[] = [];
 
   const addInvalid = (field: string, value: any, reason: string) =>
@@ -854,6 +858,25 @@ export class ReportsService {
   ) {}
 
   // ── Public Methods ──────────────────────────────────────────────────────────
+
+private remapCholesterol(raw: number | null): number | null {
+  if (raw === null || raw === undefined) return null;
+  if (raw === 1 || raw === 2 || raw === 3) return raw;
+  if (raw < 180) return 1;
+  if (raw < 220) return 2;
+  return 3;
+}
+
+private remapGlucose(raw: number | null): number | null {
+  if (raw === null || raw === undefined) return null;
+  if (raw === 1 || raw === 2 || raw === 3) return raw;
+  if (raw < 70) return 1;
+  if (raw < 100) return 2;
+  return 3;
+}
+
+
+
 
   /** Admin: get all reports for a specific radiologist */
   async getReportsByRadiologistId(radiologistId: number): Promise<Report[]> {
@@ -1165,9 +1188,14 @@ featureEntity.cardio      = safeInt(fields.cardio,      ['cardio', 'cardiovascul
 featureEntity.report      = savedReport;
 
     const savedFeature: Feature = await this.featureRepository.save(featureEntity);
-
+    
+const featureForPrediction: Feature = {
+  ...savedFeature,
+  cholesterol: this.remapCholesterol(savedFeature.cholesterol),
+  gluc: this.remapGlucose(savedFeature.gluc),
+};
     // ── 6. AI Prediction ────────────────────────────────────────────────────
-    const aiPredictionResult = await this.runAiPrediction(savedReport, savedFeature);
+    const aiPredictionResult = await this.runAiPrediction(savedReport, featureForPrediction);
 
     // ── 7. Notify assigned doctor ───────────────────────────────────────────
     const notificationResult = await this.notifyAssignedDoctor({
