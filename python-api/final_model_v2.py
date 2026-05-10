@@ -206,7 +206,8 @@ def predict(img_path, classifier_path, segmenter_path, out_dir,
 
     # ── 1. CLASSIFICATION ────────────────────────────────────────────────────
     clf = ClassifierCNN(num_classes=3).to(device)
-    clf.load_state_dict(torch.load(classifier_path, map_location=device))
+    # clf.load_state_dict(torch.load(classifier_path, map_location=device))
+    clf.load_state_dict(torch.load(classifier_path, map_location=device, weights_only=False))
     clf.eval()
 
     with torch.no_grad():
@@ -226,7 +227,8 @@ def predict(img_path, classifier_path, segmenter_path, out_dir,
 
         # Load weights saved as 'best_segmentation_model_v4.pth' by training
         seg = UNet(in_ch=3, num_classes=3).to(device)
-        seg.load_state_dict(torch.load(segmenter_path, map_location=device))
+        # seg.load_state_dict(torch.load(segmenter_path, map_location=device))
+        seg.load_state_dict(torch.load(segmenter_path, map_location=device, weights_only=False))
         seg.eval()
 
         with torch.no_grad():
