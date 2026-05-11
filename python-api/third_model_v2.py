@@ -614,22 +614,24 @@ def run_patient_inference(
     import torch
 
 # Initialize the model
-    raw_model = CNN_LSTM()
+#     raw_model = CNN_LSTM()
 
-# Standard model loading method (no need for distributed checkpointing)
-    state_dict = torch.load(model_path, map_location=device)
+# # Standard model loading method (no need for distributed checkpointing)
+#     state_dict = torch.load(model_path, map_location=device)
 
-# If the model state dict has different keys, clean them up
-    cleaned = {k.replace("_orig_mod.", ""): v for k, v in state_dict.items()}
+# # If the model state dict has different keys, clean them up
+#     cleaned = {k.replace("_orig_mod.", ""): v for k, v in state_dict.items()}
 
-# Load the cleaned state dict into the model
-    raw_model.load_state_dict(cleaned)
+# # Load the cleaned state dict into the model
+#     raw_model.load_state_dict(cleaned)
 
-# Move model to device (GPU or CPU)
-    raw_model.to(device).eval()
+# # Move model to device (GPU or CPU)
+#     raw_model.to(device).eval()
 
+#     print("  Model loaded.\n")
+    from cadica_model import get_model
+    raw_model = get_model()
     print("  Model loaded.\n")
-
 
 
 

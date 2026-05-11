@@ -64,10 +64,26 @@ cloudinary.config(
     api_key=os.environ.get("CLOUDINARY_API_KEY"),
     api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
 )
-
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "third_best_model_v1.pth")
 SEQ_LEN    = 9
+# ── Model globally load karo - ek baar sirf ──────────────────────────────────
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        import torch
+        from third_model_v2 import CNN_LSTM, device
+        print("[CADICA] Loading model globally...")
+        raw_model = CNN_LSTM()
+        state_dict = torch.load(MODEL_PATH, map_location=device, weights_only=False)
+        cleaned = {k.replace("_orig_mod.", ""): v for k, v in state_dict.items()}
+        raw_model.load_state_dict(cleaned)
+        raw_model.to(device).eval()
+        _model = raw_model
+        print("[CADICA] Model loaded globally ✅")
+    return _model
 
 
 # ── Cloudinary Upload Helper ──────────────────────────────────────────────────
