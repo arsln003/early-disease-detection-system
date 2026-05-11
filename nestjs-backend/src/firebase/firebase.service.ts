@@ -15,12 +15,12 @@ export class FirebaseService implements OnModuleInit {
   }
 
   async sendReportToDoctor(payload: {
-    fcmToken: string| null;
-    doctorName: string;
-    patientName: string;
-    reportId: number;
-    radiologistName: string;
-    comment?: string;
+    fcmToken: string | null;
+  doctorName: string;
+  patientId: number;
+  patientName: string;
+  modelName: string;
+  comment?: string;
   }): Promise<void> {
      if (!payload.fcmToken?.trim()) return;
     const message: admin.messaging.Message = {
@@ -30,11 +30,12 @@ export class FirebaseService implements OnModuleInit {
   body: `🚨 Urgent: High-risk factors detected in ${payload.patientName}'s report. Immediate follow-up advised.`,
       },
       data: {
-        reportId: String(payload.reportId),
-        patientName: payload.patientName,
-        radiologistName: payload.radiologistName,
-        comment: payload.comment ?? '',
-        type: 'REPORT_PREDICTED',
+        patientId: String(payload.patientId),
+      patientName: payload.patientName,
+      doctorName: payload.doctorName,
+      modelName: payload.modelName,
+      comment: payload.comment ?? '',
+      type: 'REPORT_PREDICTED',
       },
     };
 

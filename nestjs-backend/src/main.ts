@@ -11,15 +11,20 @@ async function bootstrap() {
       await seedAdmins(dataSource);
 
   // --- YEH LINE ADD KARO ---
+  // app.enableCors({
+  //   origin: 'http://localhost:3000', // Allow Next.js frontend
+  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  //   credentials: true,
+
+  // });
+  // -------------------------
+
   app.enableCors({
-    origin: 'http://localhost:3000', // Allow Next.js frontend
+    origin: ['http://localhost:3000','https://mediportal-v1.vercel.app/'], // Allow Next.js frontend
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
 
   });
-  // -------------------------
-
-
 
 
 

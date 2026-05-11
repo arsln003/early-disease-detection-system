@@ -207,8 +207,10 @@ async sendReportToDoctor(
       fcmToken: doctor.fcmtoken,
       doctorName: doctor.fullname,
       patientName: report.patient.fullname,
-      reportId: report.reportid,
-      radiologistName: report.radiologist?.fullname ?? 'Radiologist',
+      patientId: report.patient.patientid,
+      //reportId: report.reportid,
+     // radiologistName: report.radiologist?.fullname ?? 'Radiologist',
+      modelName: 'Cardio Model',
       comment: report.comment ?? '',
     });
 

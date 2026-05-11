@@ -194,9 +194,9 @@ const shouldNotify = predictionClass === 'Ischemia' || predictionClass === 'Hemo
           await this.firebaseService.sendReportToDoctor({
             fcmToken:        doctor.fcmtoken,
             doctorName:      doctor.fullname,
+            patientId:      patient.patientid,
             patientName:     patient.fullname,
-            reportId:        savedStrokeReport.strokereportid,
-            radiologistName: radiologist.fullname,
+            modelName: 'Stroke Model',
             comment:
               comment?.trim() ||
               `Stroke CT prediction result: ${predictionClass} detected for patient ${patient.fullname}.`,

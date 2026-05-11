@@ -1380,9 +1380,9 @@ if (
       await this.firebaseService.sendReportToDoctor({
         fcmToken: doctor.fcmtoken,
         doctorName: doctor.fullname,
+        patientId: patient.patientid,
         patientName: patient.fullname,
-        reportId: savedReport.reportid,
-        radiologistName: radiologist.fullname,
+         modelName: 'Cardio Model',
         comment:
           savedReport.comment ??
           (aiPredictionResult?.generated
