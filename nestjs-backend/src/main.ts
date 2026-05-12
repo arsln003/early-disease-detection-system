@@ -20,7 +20,7 @@ async function bootstrap() {
   // -------------------------
 
   app.enableCors({
-    origin: ['http://localhost:3000','https://mediportal-v1.vercel.app/'], // Allow Next.js frontend
+    origin: ['http://localhost:3000','https://mediportal-v1.vercel.app'], // Allow Next.js frontend
      allowedHeaders: ['Content-Type', 'Authorization'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
