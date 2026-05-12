@@ -21,15 +21,38 @@ export class DoctorsController {
   ) {}
 
   // GET /doctors/:id/assigned-patients/details?severity=critical|moderate|normal|all
-  @Get(':id/assigned-patients/details')
+  // @Get(':id/assigned-patients/details')
+  // getAssignedPatientsWithDetails(
+  //   @Param('id', ParseIntPipe) id: number,          // ✅ ParseIntPipe, no manual +id
+  //   @Query('severity') severity: 'all' | 'critical' | 'moderate' | 'normal' = 'all',
+  // ) {
+  //   return this.doctorsService.getAssignedPatientsWithDetails(id, severity);
+  // }
+
+    @Get(':id/assigned-cardio-patients/details')
   getAssignedPatientsWithDetails(
     @Param('id', ParseIntPipe) id: number,          // ✅ ParseIntPipe, no manual +id
-    @Query('severity') severity: 'all' | 'critical' | 'moderate' | 'normal' = 'all',
+    @Query('severity') severity: 'all' | 'low' | 'high' = 'all',
   ) {
-    return this.doctorsService.getAssignedPatientsWithDetails(id, severity);
+    return this.doctorsService.getCardioAssignedPatientsWithDetails(id, severity);
   }
 
 
+@Get(':id/assigned-stroke-patients/details')
+getStrokeAssignedPatientsWithDetails(
+  @Param('id', ParseIntPipe) id: number,
+  @Query('severity')
+  severity: 'all' | 'no-stroke' | 'ischemia' | 'hemorrhage' = 'all',
+) {
+  return this.doctorsService.getStrokeAssignedPatientsWithDetails(id, severity);
+}
+
+@Get(':id/assigned-cadica-patients/details')
+getCadicaAssignedPatientsWithDetails(
+  @Param('id', ParseIntPipe) id: number,
+) {
+  return this.doctorsService.getCadicaAssignedPatientsWithDetails(id);
+}
 
   // GET /doctors/my-patients  ← logged in doctor sees their own patients
   @Get('my-patients')
@@ -167,5 +190,16 @@ getStrokeReportDetails(
 ) {
   return this.strokeService.getStrokeReportDetails(strokereportid);
 }
+
+
+//no of assign patients
+
+@Get('assigned-patients-count/:doctorid')
+getAssignedPatientsCount(
+  @Param('doctorid', ParseIntPipe) doctorid: number,
+) {
+  return this.doctorsService.getAssignedPatientsCount(doctorid);
+}
+
 
 }

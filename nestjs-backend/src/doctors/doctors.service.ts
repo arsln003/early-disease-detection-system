@@ -149,15 +149,129 @@ async getAssignedPatients(doctorId: number): Promise<any> {
 
 
 
-// get assigned patient info
-// doctor → assignments → patient → reports → aiResult
-// doctor → assignments → patient → cadicaVideoReports → cadicaResult
-// doctor → assignments → patient → strokeReports → strokeResult
-async getAssignedPatientsWithDetails(
+// // get assigned patient info
+// // doctor → assignments → patient → reports → aiResult
+// // doctor → assignments → patient → cadicaVideoReports → cadicaResult
+// // doctor → assignments → patient → strokeReports → strokeResult
+// async getAssignedPatientsWithDetails(
+//   doctorId: number,
+//   severity: 'all' | 'critical' | 'moderate' | 'normal' = 'all',
+// ): Promise<any[]> {
+//   // 1) Ensure doctor exists
+//   const doctor = await this.doctorRepository.findOne({
+//     where: { doctorid: doctorId },
+//   });
+
+//   if (!doctor) {
+//     throw new NotFoundException(`Doctor with id ${doctorId} not found`);
+//   }
+
+//   // 2) Fetch assignments with nested relations
+//   const assignments = await this.assignmentRepository.find({
+//     where: { doctor: { doctorid: doctorId } },
+//     relations: [
+//       'patient',
+//       'patient.reports',
+//       'patient.reports.aiResult',
+//       'patient.cadicaVideoReports',
+//       'patient.cadicaVideoReports.cadicaResult',
+//       'patient.strokeReports',
+//       'patient.strokeReports.strokeResult',
+//     ],
+//     order: { assignedat: 'DESC' },
+//   });
+
+//   // helper to pick category by risk %
+//   const classifyRisk = (risk: number): 'Normal' | 'Moderate' | 'Critical' => {
+//     if (risk < 50) return 'Normal';
+//     if (risk <= 75) return 'Moderate';
+//     return 'Critical';
+//   };
+
+//   const enhancedAssignments = assignments
+//     .map((assignment) => {
+//       let patientRiskCategory: string | null = null;
+
+//       // Handling reports and AI results
+//       assignment.patient.reports = assignment.patient.reports.map((report) => {
+//         const ai = report.aiResult;
+
+//         if (ai && ai.probability != null) {
+//           const risk = Number(ai.probability) * 100; // convert to percentage
+//           const riskCategory = classifyRisk(risk);
+
+//           // decide patient-level category (take highest severity)
+//           const rank: Record<string, number> = {
+//             Normal: 1,
+//             Moderate: 2,
+//             Critical: 3,
+//           };
+
+//           if (
+//             !patientRiskCategory ||
+//             rank[riskCategory] > (rank[patientRiskCategory] || 0)
+//           ) {
+//             patientRiskCategory = riskCategory;
+//           }
+
+//           return {
+//             ...report,
+//             aiResult: {
+//               ...ai,
+//               riskCategory,
+//             },
+//           };
+//         }
+
+//         return {
+//           ...report,
+//           aiResult: {
+//             ...ai,
+//             riskCategory: 'No AI Result',
+//           },
+//         };
+//       });
+
+//       // Handling Cadica Video Reports and Results
+//       assignment.patient.cadicaVideoReports = assignment.patient.cadicaVideoReports.map((cadicaVideoReport) => {
+//         const cadicaResult = cadicaVideoReport.cadicaResult;
+//         return {
+//           ...cadicaVideoReport,
+//           cadicaResult: cadicaResult || null,
+//         };
+//       });
+
+//       // Handling Stroke Reports and Results
+//       assignment.patient.strokeReports = assignment.patient.strokeReports.map((strokeReport) => {
+//         const strokeResult = strokeReport.strokeResult;
+//         return {
+//           ...strokeReport,
+//           strokeResult: strokeResult || null,
+//         };
+//       });
+
+//       const { doctor, ...cleanedAssignment } = assignment as any;
+
+//       return {
+//         ...cleanedAssignment,
+//         patientRiskCategory: patientRiskCategory || 'No AI Result',
+//       };
+//     })
+//     // 3) Apply severity filter
+//     .filter((item) => {
+//       if (severity === 'all') return true;
+
+//       const cat = (item.patientRiskCategory || '').toLowerCase();
+//       return cat === severity.toLowerCase();
+//     });
+
+//   return enhancedAssignments;
+// }
+
+async getCardioAssignedPatientsWithDetails(
   doctorId: number,
-  severity: 'all' | 'critical' | 'moderate' | 'normal' = 'all',
+  severity: 'all' | 'low' | 'high' = 'all',
 ): Promise<any[]> {
-  // 1) Ensure doctor exists
   const doctor = await this.doctorRepository.findOne({
     where: { doctorid: doctorId },
   });
@@ -166,52 +280,44 @@ async getAssignedPatientsWithDetails(
     throw new NotFoundException(`Doctor with id ${doctorId} not found`);
   }
 
-  // 2) Fetch assignments with nested relations
   const assignments = await this.assignmentRepository.find({
     where: { doctor: { doctorid: doctorId } },
     relations: [
       'patient',
       'patient.reports',
       'patient.reports.aiResult',
-      'patient.cadicaVideoReports',
-      'patient.cadicaVideoReports.cadicaResult',
-      'patient.strokeReports',
-      'patient.strokeReports.strokeResult',
     ],
     order: { assignedat: 'DESC' },
   });
 
-  // helper to pick category by risk %
-  const classifyRisk = (risk: number): 'Normal' | 'Moderate' | 'Critical' => {
-    if (risk < 50) return 'Normal';
-    if (risk <= 75) return 'Moderate';
-    return 'Critical';
+  const classifyRisk = (probability: number): 'Low Risk' | 'High Risk' => {
+    const risk = Number(probability) * 100;
+    return risk < 50 ? 'Low Risk' : 'High Risk';
   };
 
   const enhancedAssignments = assignments
     .map((assignment) => {
-      let patientRiskCategory: string | null = null;
+      let hasHighRisk = false;
+      let hasLowRisk = false;
 
-      // Handling reports and AI results
-      assignment.patient.reports = assignment.patient.reports.map((report) => {
-        const ai = report.aiResult;
+      let cardioReports = assignment.patient.reports
+        .filter(
+          (report) =>
+            report.aiResult &&
+            report.aiResult.probability !== null &&
+            report.aiResult.probability !== undefined,
+        )
+        .map((report) => {
+          const ai = report.aiResult;
 
-        if (ai && ai.probability != null) {
-          const risk = Number(ai.probability) * 100; // convert to percentage
-          const riskCategory = classifyRisk(risk);
+          const riskCategory = classifyRisk(Number(ai.probability));
 
-          // decide patient-level category (take highest severity)
-          const rank: Record<string, number> = {
-            Normal: 1,
-            Moderate: 2,
-            Critical: 3,
-          };
+          if (riskCategory === 'High Risk') {
+            hasHighRisk = true;
+          }
 
-          if (
-            !patientRiskCategory ||
-            rank[riskCategory] > (rank[patientRiskCategory] || 0)
-          ) {
-            patientRiskCategory = riskCategory;
+          if (riskCategory === 'Low Risk') {
+            hasLowRisk = true;
           }
 
           return {
@@ -221,52 +327,235 @@ async getAssignedPatientsWithDetails(
               riskCategory,
             },
           };
-        }
+        })
+        .sort((a, b) => {
+          return (
+            new Date(b.uploadedat ?? 0).getTime() -
+            new Date(a.uploadedat ?? 0).getTime()
+          );
+        });
 
-        return {
-          ...report,
-          aiResult: {
-            ...ai,
-            riskCategory: 'No AI Result',
-          },
-        };
-      });
+      if (severity === 'low') {
+        cardioReports = cardioReports.filter(
+          (report) => report.aiResult.riskCategory === 'Low Risk',
+        );
+      }
 
-      // Handling Cadica Video Reports and Results
-      assignment.patient.cadicaVideoReports = assignment.patient.cadicaVideoReports.map((cadicaVideoReport) => {
-        const cadicaResult = cadicaVideoReport.cadicaResult;
-        return {
-          ...cadicaVideoReport,
-          cadicaResult: cadicaResult || null,
-        };
-      });
+      if (severity === 'high') {
+        cardioReports = cardioReports.filter(
+          (report) => report.aiResult.riskCategory === 'High Risk',
+        );
+      }
 
-      // Handling Stroke Reports and Results
-      assignment.patient.strokeReports = assignment.patient.strokeReports.map((strokeReport) => {
-        const strokeResult = strokeReport.strokeResult;
-        return {
-          ...strokeReport,
-          strokeResult: strokeResult || null,
-        };
-      });
+      let patientRiskCategory = 'No AI Result';
 
-      const { doctor, ...cleanedAssignment } = assignment as any;
+      if (hasHighRisk) {
+        patientRiskCategory = 'High Risk';
+      } else if (hasLowRisk) {
+        patientRiskCategory = 'Low Risk';
+      }
 
       return {
-        ...cleanedAssignment,
-        patientRiskCategory: patientRiskCategory || 'No AI Result',
+        assignmentid: assignment.assignmentid,
+        assignedat: assignment.assignedat,
+        patientRiskCategory,
+        patient: {
+          patientid: assignment.patient.patientid,
+          fullname: assignment.patient.fullname,
+          email: assignment.patient.email,
+          age: assignment.patient.age,
+          gender: assignment.patient.gender,
+          contactnumber: assignment.patient.contactnumber,
+          address: assignment.patient.address,
+          createdat: assignment.patient.createdat,
+          reports: cardioReports,
+        },
       };
     })
-    // 3) Apply severity filter
     .filter((item) => {
-      if (severity === 'all') return true;
-
-      const cat = (item.patientRiskCategory || '').toLowerCase();
-      return cat === severity.toLowerCase();
+      return item.patient.reports.length > 0;
     });
 
   return enhancedAssignments;
 }
+
+
+
+
+async getStrokeAssignedPatientsWithDetails(
+  doctorId: number,
+  severity: 'all' | 'no-stroke' | 'ischemia' | 'hemorrhage' = 'all',
+): Promise<any[]> {
+  const doctor = await this.doctorRepository.findOne({
+    where: { doctorid: doctorId },
+  });
+
+  if (!doctor) {
+    throw new NotFoundException(`Doctor with id ${doctorId} not found`);
+  }
+
+  const assignments = await this.assignmentRepository.find({
+    where: { doctor: { doctorid: doctorId } },
+    relations: [
+      'patient',
+      'patient.strokeReports',
+      'patient.strokeReports.strokeResult',
+    ],
+    order: { assignedat: 'DESC' },
+  });
+
+  const normalizeSeverity = (
+    value: 'all' | 'no-stroke' | 'ischemia' | 'hemorrhage',
+  ): 'all' | 'No Stroke' | 'Ischemia' | 'Hemorrhage' => {
+    if (value === 'no-stroke') return 'No Stroke';
+    if (value === 'ischemia') return 'Ischemia';
+    if (value === 'hemorrhage') return 'Hemorrhage';
+    return 'all';
+  };
+
+  const selectedSeverity = normalizeSeverity(severity);
+
+  const enhancedAssignments = assignments
+    .map((assignment) => {
+      let strokeReports = assignment.patient.strokeReports
+        .filter(
+          (strokeReport) =>
+            strokeReport.strokeResult &&
+            strokeReport.strokeResult.prediction,
+        )
+        .map((strokeReport) => {
+          const strokeResult = strokeReport.strokeResult;
+
+          return {
+            ...strokeReport,
+            strokeResult: {
+              ...strokeResult,
+              severityCategory: strokeResult.prediction,
+            },
+          };
+        })
+        .sort((a, b) => {
+          return (
+            new Date(b.uploadedat ?? 0).getTime() -
+            new Date(a.uploadedat ?? 0).getTime()
+          );
+        });
+
+      if (selectedSeverity !== 'all') {
+        strokeReports = strokeReports.filter(
+          (strokeReport) =>
+            strokeReport.strokeResult.severityCategory === selectedSeverity,
+        );
+      }
+
+      return {
+        assignmentid: assignment.assignmentid,
+        assignedat: assignment.assignedat,
+        patient: {
+          patientid: assignment.patient.patientid,
+          fullname: assignment.patient.fullname,
+          email: assignment.patient.email,
+          age: assignment.patient.age,
+          gender: assignment.patient.gender,
+          contactnumber: assignment.patient.contactnumber,
+          address: assignment.patient.address,
+          createdat: assignment.patient.createdat,
+          strokeReports,
+        },
+      };
+    })
+    .filter((item) => {
+      return item.patient.strokeReports.length > 0;
+    });
+
+  return enhancedAssignments;
+}
+
+
+
+async getCadicaAssignedPatientsWithDetails(
+  doctorId: number,
+): Promise<any[]> {
+  const doctor = await this.doctorRepository.findOne({
+    where: { doctorid: doctorId },
+  });
+
+  if (!doctor) {
+    throw new NotFoundException(`Doctor with id ${doctorId} not found`);
+  }
+
+  const assignments = await this.assignmentRepository.find({
+    where: { doctor: { doctorid: doctorId } },
+    relations: [
+      'patient',
+      'patient.cadicaVideoReports',
+      'patient.cadicaVideoReports.cadicaResult',
+    ],
+    order: { assignedat: 'DESC' },
+  });
+
+  const enhancedAssignments = assignments
+    .map((assignment) => {
+      const cadicaVideoReports = assignment.patient.cadicaVideoReports
+        .filter((report) => report.cadicaResult)
+        .map((report) => {
+          const result = report.cadicaResult;
+
+          return {
+            ...report,
+
+            cadicaResult: result,
+
+            modelResult: {
+              verdict: result.verdict,
+              confidence: result.confidence,
+              weighted_avg_prob: result.weightedAvgProb,
+              most_suspicious_video: result.mostSuspiciousVideo,
+              most_suspicious_prob: result.mostSuspiciousProb,
+              videos_processed: result.videosProcessed,
+              videos_skipped: result.videosSkipped,
+              summary_image: result.summaryImage,
+              summary_image_url: result.summaryImageUrl,
+              per_video: result.perVideo,
+              report_id: report.cadicavideoreportid,
+            },
+
+            reportAssets: {
+              summaryImage: result.summaryImage,
+              summaryImageUrl: result.summaryImageUrl,
+              gradcamImages: result.gradcamImages,
+            },
+          };
+        })
+        .sort((a, b) => {
+          return (
+            new Date(b.uploadedat ?? 0).getTime() -
+            new Date(a.uploadedat ?? 0).getTime()
+          );
+        });
+
+      return {
+        assignmentid: assignment.assignmentid,
+        assignedat: assignment.assignedat,
+        patient: {
+          patientid: assignment.patient.patientid,
+          fullname: assignment.patient.fullname,
+          email: assignment.patient.email,
+          age: assignment.patient.age,
+          gender: assignment.patient.gender,
+          contactnumber: assignment.patient.contactnumber,
+          address: assignment.patient.address,
+          createdat: assignment.patient.createdat,
+          cadicaVideoReports,
+        },
+      };
+    })
+    .filter((item) => item.patient.cadicaVideoReports.length > 0);
+
+  return enhancedAssignments;
+}
+
+
 
 
 //save fcm token for doctor
@@ -305,4 +594,28 @@ async getDoctorProfile(doctorid: number) {
 }
 
 
+//assign patient count for doctor
+async getAssignedPatientsCount(doctorid: number) {
+  const doctor = await this.doctorRepository.findOne({
+    where: { doctorid },
+  });
+
+  if (!doctor) {
+    throw new NotFoundException('Doctor not found');
+  }
+
+  const count = await this.assignmentRepository.count({
+    where: {
+      doctor: {
+        doctorid,
+      },
+    },
+  });
+
+  return {
+    doctorid,
+    doctorName: doctor.fullname,
+    assignedPatientsCount: count,
+  };
+}
 }
