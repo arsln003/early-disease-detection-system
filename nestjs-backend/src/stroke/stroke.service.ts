@@ -200,6 +200,7 @@ const shouldNotify = predictionClass === 'Ischemia' || predictionClass === 'Hemo
             comment:
               comment?.trim() ||
               `Stroke CT prediction result: ${predictionClass} detected for patient ${patient.fullname}.`,
+              reportId: savedStrokeReport.strokereportid,
           });
 
           notification = {

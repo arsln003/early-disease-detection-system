@@ -826,6 +826,8 @@ private async saveCardioNlpResult(savedReport: Report, nlpResult: any) {
           (aiPredictionResult?.generated
             ? 'Report uploaded and AI prediction generated.'
             : 'Report uploaded. AI prediction could not be generated automatically.'),
+
+            reportId: savedReport.reportid, 
       });
 
       return {

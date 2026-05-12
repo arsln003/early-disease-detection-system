@@ -21,6 +21,7 @@ export class FirebaseService implements OnModuleInit {
   patientName: string;
   modelName: string;
   comment?: string;
+  reportId: number;  
   }): Promise<void> {
      if (!payload.fcmToken?.trim()) return;
     const message: admin.messaging.Message = {
@@ -35,6 +36,7 @@ export class FirebaseService implements OnModuleInit {
       doctorName: payload.doctorName,
       modelName: payload.modelName,
       comment: payload.comment ?? '',
+      reportId: String(payload.reportId), 
       type: 'REPORT_PREDICTED',
       },
     };

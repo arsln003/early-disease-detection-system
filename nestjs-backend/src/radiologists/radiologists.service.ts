@@ -212,6 +212,7 @@ async sendReportToDoctor(
      // radiologistName: report.radiologist?.fullname ?? 'Radiologist',
       modelName: 'Cardio Model',
       comment: report.comment ?? '',
+      reportId: report.reportid,
     });
 
     return {
