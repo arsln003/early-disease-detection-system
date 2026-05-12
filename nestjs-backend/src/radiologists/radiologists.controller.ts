@@ -79,19 +79,6 @@ export class RadiologistController {
       comment,
     );
   }
-  // ── Reports ────────────────────────────────────────────────────────────
-  // @Get('reports/:patientId')
-  // getReportsByPatientId(
-  //   @Param('patientId', ParseIntPipe) patientId: number,
-  //   @Req() req: any,
-  // ) {
-  //   const radiologistId: number = req.user.id;  // ✅ clean, no fallback chain needed
-
-  //   if (!radiologistId) {
-  //     throw new UnauthorizedException('Invalid radiologist token');  // ✅ NestJS exception
-  //   }
-  //   return this.reportService.getReportsByPatientId(patientId);
-  // }
 
 
   //get all reports 
