@@ -22,3 +22,8 @@ pandas
 xgboost
 scikit-learn
 cloudinary
+transformers
+
+sentencepiece
+safetensors
+huggingface-hub

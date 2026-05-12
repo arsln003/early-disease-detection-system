@@ -133,3 +133,10 @@ async def stroke_predict_endpoint(
 
 
 
+# ── Cardio NLP Prediction Model ──────────────────────────────────────
+@app.post("/cardio-nlp/predict")
+def cardio_nlp_predict(data: dict):
+    from cardio_nlp_model import CardioInput, analyze_patient
+
+    cardio_input = CardioInput(**data)
+    return analyze_patient(cardio_input)

@@ -13,7 +13,7 @@ import { AiResult } from "./AiResult";
 import { Feature } from "./Feature";
 import { Patient } from "./Patient";
 import { Radiologist } from "./Radiologist";
-
+import { CardioNlpResult } from "./CardioNlpResult";
 
 @Index("report_pkey", ["reportid"], { unique: true })
 @Entity("report", { schema: "public" })
@@ -57,5 +57,6 @@ export class Report {
   @OneToOne(() => AiResult, (aiResult) => aiResult.report)
   aiResult: AiResult;
 
-
+@OneToOne(() => CardioNlpResult, (cardioNlpResult) => cardioNlpResult.report)
+cardioNlpResult: CardioNlpResult;
 }

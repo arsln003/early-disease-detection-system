@@ -19,3 +19,5 @@ import { CadicaVideoReport } from 'src/entities/entities/CadicaVideoReport';
   exports: [CadicaService],
 })
 export class CadicaModule {}
+
+

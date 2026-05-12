@@ -1,634 +1,3 @@
-// import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-// import { InjectRepository } from '@nestjs/typeorm';
-// import { Repository } from 'typeorm';
-// import { Report } from 'src/entities/entities/Report';
-// import { Radiologist } from 'src/entities/entities/Radiologist';
-// import { OcrService } from 'src/ocr/ocr.service';
-// import { Feature } from 'src/entities/entities/Feature';
-// import { Patient } from 'src/entities/entities/Patient';
-// import { Assignment } from 'src/entities/entities/Assignment';
-// import { Doctor } from 'src/entities/entities/Doctor';
-// import { FirebaseService } from 'src/firebase/firebase.service';
-// import {CadicaService} from 'src/cadica/cadica.service';
-// import { CadicaResult } from 'src/entities/entities/CadicaResult';
-// import * as fs from 'fs';
-// import * as path from 'path';
-// import { randomUUID } from 'crypto';
-// import { HttpService } from '@nestjs/axios';
-// import { firstValueFrom } from 'rxjs';
-// import { AiResult } from 'src/entities/entities/AiResult';
-
-
-// type AiPredictionResult =
-//   | {
-//       generated: true;
-//       aiResult: any;
-//     }
-//   | {
-//       generated: false;
-//       reason: string;
-//       missingFields?: string[];
-//       invalidFields?: { field: string; value: any; reason: string }[];
-//       apiResponse?: any;
-//       error?: any;
-//     }
-//   | null;
-
-// function isValidNumber(value: any): boolean {
-//   return value !== null && value !== undefined && Number.isFinite(Number(value));
-// }
-
-// function validatePredictionPayload(payload: any) {
-//   const requiredFields = [
-//     'age',
-//     'gender',
-//     'height',
-//     'weight',
-//     'ap_hi',
-//     'ap_lo',
-//     'cholesterol',
-//     'gluc',
-//     'smoke',
-//     'alco',
-//     'active',
-//   ];
-
-//   const missingFields = requiredFields.filter(
-//     (field) => payload[field] === null || payload[field] === undefined,
-//   );
-
-//   const invalidFields: { field: string; value: any; reason: string }[] = [];
-
-//   for (const field of requiredFields) {
-//     const value = payload[field];
-
-//     if (value === null || value === undefined) continue;
-
-//     if (!isValidNumber(value)) {
-//       invalidFields.push({
-//         field,
-//         value,
-//         reason: 'Value must be a valid number',
-//       });
-//     }
-//   }
-
-//   if (isValidNumber(payload.age) && Number(payload.age) <= 0) {
-//     invalidFields.push({
-//       field: 'age',
-//       value: payload.age,
-//       reason: 'Age must be greater than 0 days',
-//     });
-//   }
-
-//   if (isValidNumber(payload.height) && Number(payload.height) <= 0) {
-//     invalidFields.push({
-//       field: 'height',
-//       value: payload.height,
-//       reason: 'Height must be greater than 0',
-//     });
-//   }
-
-//   if (isValidNumber(payload.weight) && Number(payload.weight) <= 0) {
-//     invalidFields.push({
-//       field: 'weight',
-//       value: payload.weight,
-//       reason: 'Weight must be greater than 0',
-//     });
-//   }
-
-//   if (isValidNumber(payload.ap_hi) && Number(payload.ap_hi) <= 0) {
-//     invalidFields.push({
-//       field: 'ap_hi',
-//       value: payload.ap_hi,
-//       reason: 'Systolic BP must be greater than 0',
-//     });
-//   }
-
-//   if (isValidNumber(payload.ap_lo) && Number(payload.ap_lo) <= 0) {
-//     invalidFields.push({
-//       field: 'ap_lo',
-//       value: payload.ap_lo,
-//       reason: 'Diastolic BP must be greater than 0',
-//     });
-//   }
-
-//   const binaryFields = ['smoke', 'alco', 'active'];
-//   for (const field of binaryFields) {
-//     if (
-//       payload[field] !== null &&
-//       payload[field] !== undefined &&
-//       ![0, 1].includes(Number(payload[field]))
-//     ) {
-//       invalidFields.push({
-//         field,
-//         value: payload[field],
-//         reason: 'Value must be 0 or 1',
-//       });
-//     }
-//   }
-
-//   if (
-//     payload.gender !== null &&
-//     payload.gender !== undefined &&
-//     ![1, 2].includes(Number(payload.gender))
-//   ) {
-//     invalidFields.push({
-//       field: 'gender',
-//       value: payload.gender,
-//       reason: 'Gender must be 1 or 2',
-//     });
-//   }
-
-//   const categoryFields = ['cholesterol', 'gluc'];
-//   for (const field of categoryFields) {
-//     if (
-//       payload[field] !== null &&
-//       payload[field] !== undefined &&
-//       ![1, 2, 3].includes(Number(payload[field]))
-//     ) {
-//       invalidFields.push({
-//         field,
-//         value: payload[field],
-//         reason: 'Value must be 1, 2, or 3',
-//       });
-//     }
-//   }
-
-//   return {
-//     isValid: missingFields.length === 0 && invalidFields.length === 0,
-//     missingFields,
-//     invalidFields,
-//   };
-// }
-
-
-
-
-
-// @Injectable()
-// export class ReportsService {
-//   constructor(
-//     @InjectRepository(Report)
-//     private readonly reportsRepository: Repository<Report>,
-//     @InjectRepository(Radiologist)
-//     private readonly radiologistRepository: Repository<Radiologist>,
-// @InjectRepository(Feature)
-//     private readonly featureRepository: Repository<Feature>,
-//     @InjectRepository(Patient)
-//     private readonly patientRepository: Repository<Patient>,
-//     private readonly ocrService: OcrService,
-//       @InjectRepository(Assignment)
-//   private readonly assignmentRepo: Repository<Assignment>,
-//   @InjectRepository(Doctor)
-//   private readonly doctorRepo: Repository<Doctor>,
-//    @InjectRepository(CadicaResult)
-//   private readonly cadicaResultRepository: Repository<CadicaResult>,
-
-//   private readonly cadicaService: CadicaService
-//   ,
-//   private readonly firebaseService: FirebaseService,
-//   private readonly httpService: HttpService,
-//     @InjectRepository(AiResult)
-//   private readonly aiResultRepository: Repository<AiResult>,
-  
-//   ) {}
-
-
-//   //not used yet, but can be used in the future for admin to view reports by radiologist
-//   async getReportsByRadiologistId(rid: number) {
-//     const reports = await this.reportsRepository.find({
-//       where: { radiologist: { radiologistid: rid } },
-//       relations: ['patient', 'aiResult', 'radiologist'],
-//       order: { uploadedat: 'DESC' },
-//     });
-
-//     if (reports.length === 0) {
-//       throw new NotFoundException(
-//         `No reports found for radiologist with ID ${rid}`,
-//       );
-//     }
-
-//     return reports;
-//   }
-
-
-
-
-// async uploadAndAnalyzeFile(
-//   radiologistId: number,
-//   patientId: number,
-//   file: Express.Multer.File,
-//   comment?: string,
-// ) {
-//   if (!file) {
-//     throw new BadRequestException('File is required');
-//   }
-
-//  const allowedMimeTypes = ['application/pdf'];
-// const allowedExtensions = ['.pdf'];
-//   const lowerName = file.originalname?.toLowerCase() || '';
-
-//   const hasValidExtension = allowedExtensions.some((ext) =>
-//     lowerName.endsWith(ext),
-//   );
-
-//   if (!allowedMimeTypes.includes(file.mimetype) || !hasValidExtension) {
-//     throw new BadRequestException(
-//       'Only PDF files are allowed',
-//     );
-//   }
-
-//   if (!file.originalname || file.originalname.trim().length === 0) {
-//     throw new BadRequestException('Invalid filename');
-//   }
-
-//   if (file.originalname.length > 255) {
-//     throw new BadRequestException(
-//       'Filename is too long. Maximum 255 characters allowed',
-//     );
-//   }
-
-//   if (!patientId || Number.isNaN(patientId)) {
-//     throw new BadRequestException('Valid patientId is required');
-//   }
-
-//   const radiologist = await this.radiologistRepository.findOne({
-//     where: { radiologistid: radiologistId },
-//   });
-
-//   if (!radiologist) {
-//     throw new NotFoundException('Radiologist not found');
-//   }
-
-//   const patient = await this.patientRepository.findOne({
-//     where: { patientid: patientId },
-//   });
-
-//   if (!patient) {
-//     throw new NotFoundException('Patient not found');
-//   }
-
-//   const report = this.reportsRepository.create({
-//     filename: file.originalname,
-//     filepath: file.originalname,
-//     comment: comment?.trim() || null,
-//     patient,
-//     radiologist,
-//   });
-
-//   const savedReport = await this.reportsRepository.save(report);
-
-//   const ocrResult = await this.ocrService.processFile(file);
-
-// const toIntOrNull = (value: any): number | null => {
-//   if (value === null || value === undefined || value === '') return null;
-
-//   const num = Number(value);
-
-//   if (!Number.isFinite(num)) return null;
-
-//   return Math.round(num);
-// };
-
-// const toFloatOrNull = (value: any): number | null => {
-//   if (value === null || value === undefined || value === '') return null;
-
-//   const num = Number(value);
-
-//   if (!Number.isFinite(num)) return null;
-
-//   return num;
-// };
-
-// const featureData = {
-//   id_number: ocrResult.fields?.id_number ?? null,
-
-//   age: toIntOrNull(ocrResult.fields?.age),
-//   gender: toIntOrNull(ocrResult.fields?.gender),
-//   height: toIntOrNull(ocrResult.fields?.height),
-//   weight: toFloatOrNull(ocrResult.fields?.weight),
-
-//   ap_hi: toIntOrNull(ocrResult.fields?.ap_hi),
-//   ap_lo: toIntOrNull(ocrResult.fields?.ap_lo),
-//   cholesterol: toIntOrNull(ocrResult.fields?.cholesterol),
-//   gluc: toIntOrNull(ocrResult.fields?.gluc),
-//   smoke: toIntOrNull(ocrResult.fields?.smoke),
-//   alco: toIntOrNull(ocrResult.fields?.alco),
-//   active: toIntOrNull(ocrResult.fields?.active),
-//   cardio: toIntOrNull(ocrResult.fields?.cardio),
-
-//   report: savedReport,
-// } as any;
-
-// const feature = this.featureRepository.create(featureData);
-// const savedFeature = await this.featureRepository.save(feature);
-// // ── Auto Prediction ───────────────────────────────────────────────
-// let aiPredictionResult: AiPredictionResult = null;
-
-// try {
-//   const ageInYears = Number(savedFeature.age);
-
-//   const ageInDays = Number.isFinite(ageInYears)
-//     ? Math.round(ageInYears * 365.25)
-//     : null;
-
-//   const predictionPayload = {
-//     age: ageInYears,
-//     gender: savedFeature.gender,
-//     height: savedFeature.height,
-//     weight: savedFeature.weight,
-//     ap_hi: savedFeature.ap_hi,
-//     ap_lo: savedFeature.ap_lo,
-//     cholesterol: savedFeature.cholesterol,
-//     gluc: savedFeature.gluc,
-//     smoke: savedFeature.smoke,
-//     alco: savedFeature.alco,
-//     active: savedFeature.active,
-//   };
-
-//   const validation = validatePredictionPayload(predictionPayload);
-
-//   if (!validation.isValid) {
-//     aiPredictionResult = {
-//       generated: false,
-//       reason: 'Prediction fields are missing or invalid',
-//       missingFields: validation.missingFields,
-//       invalidFields: validation.invalidFields,
-//     };
-//   } else {
-//     const pythonApiUrl =
-//       process.env.PYTHON_API_URL || 'http://localhost:8000';
-
-//     const response = await firstValueFrom(
-//       this.httpService.post(`${pythonApiUrl}/predict`, predictionPayload),
-//     );
-
-//     const result = response.data;
-
-//     if (!result || typeof result !== 'object') {
-//       aiPredictionResult = {
-//         generated: false,
-//         reason: 'Prediction API returned empty or invalid response',
-//         apiResponse: result,
-//       };
-//     } else if (
-//       result.prediction === undefined ||
-//       result.prediction === null ||
-//       result.probability === undefined ||
-//       result.probability === null
-//     ) {
-//       aiPredictionResult = {
-//         generated: false,
-//         reason: 'Prediction API response is missing prediction/probability',
-//         apiResponse: result,
-//       };
-//     } else if (
-//       ![0, 1].includes(Number(result.prediction)) ||
-//       !Number.isFinite(Number(result.probability))
-//     ) {
-//       aiPredictionResult = {
-//         generated: false,
-//         reason: 'Prediction API returned invalid prediction/probability values',
-//         apiResponse: result,
-//       };
-//     } else {
-//       let aiResult = await this.aiResultRepository.findOne({
-//         where: { reportid: savedReport.reportid },
-//       });
-
-//       if (!aiResult) {
-//         aiResult = this.aiResultRepository.create({
-//           reportid: savedReport.reportid,
-//         });
-//       }
-
-//       aiResult.prediction = Number(result.prediction);
-//       aiResult.probability = Number(result.probability);
-//       aiResult.classification =
-//         Number(result.prediction) === 1 ? 'High Risk' : 'Low Risk';
-//       aiResult.modelname = 'CardioModelV1';
-//       aiResult.keyparameters = `BP: ${savedFeature.ap_hi}/${savedFeature.ap_lo}, Cholesterol: ${savedFeature.cholesterol}, Glucose: ${savedFeature.gluc}`;
-//       aiResult.remarks =
-//         Number(result.prediction) === 1
-//           ? 'Predicted high cardiovascular risk'
-//           : 'Predicted low cardiovascular risk';
-
-//       const savedAiResult = await this.aiResultRepository.save(aiResult);
-
-//       aiPredictionResult = {
-//         generated: true,
-//         aiResult: savedAiResult,
-//       };
-//     }
-//   }
-// } catch (error) {
-//   console.error(
-//     'Auto prediction failed:',
-//     error?.response?.data || error?.message || error,
-//   );
-
-//   aiPredictionResult = {
-//     generated: false,
-//     reason: 'Auto prediction failed',
-//     error: {
-//       message:
-//         error?.response?.data?.message ||
-//         error?.response?.data?.detail ||
-//         error?.message ||
-//         'Unknown error',
-//       status: error?.response?.status ?? null,
-//       data: error?.response?.data ?? null,
-//     },
-//   };
-// }
-
-//   // ── Auto-send to doctor ───────────────────────────────────────────
-//   const assignments = await this.assignmentRepo.find({
-//     where: { patient: { patientid: patientId } },
-//     relations: ['doctor'],
-//     order: { assignmentid: 'DESC' },
-//   });
-
-//   const assignment = assignments[0];
-
-//   if (!assignment) {
-//     return {
-//       message: 'File processed, prediction attempted, and saved successfully',
-//       report: savedReport,
-//       feature: savedFeature,
-//       ocrResult,
-//       aiPredictionResult,
-//       notification: {
-//         sent: false,
-//         reason: 'No doctor assigned to this patient',
-//       },
-//     };
-//   }
-
-//   if (!assignment.doctor) {
-//     return {
-//       message: 'File processed, prediction attempted, and saved successfully',
-//       report: savedReport,
-//       feature: savedFeature,
-//       ocrResult,
-//       aiPredictionResult,
-//       notification: {
-//         sent: false,
-//         reason: 'Assignment exists but doctor record is missing',
-//       },
-//     };
-//   }
-
-//   const doctor = assignment.doctor;
-
-//   if (!doctor.fcmtoken?.trim()) {
-//     return {
-//       message: 'File processed, prediction attempted, and saved successfully',
-//       report: savedReport,
-//       feature: savedFeature,
-//       ocrResult,
-//       aiPredictionResult,
-//       notification: {
-//         sent: false,
-//         reason: `Doctor "${doctor.fullname}" has no FCM token registered. Doctor may not have logged in on mobile.`,
-//       },
-//     };
-//   }
-
-//   try {
-//     await this.firebaseService.sendReportToDoctor({
-//       fcmToken: doctor.fcmtoken,
-//       doctorName: doctor.fullname,
-//       patientName: patient.fullname,
-//       reportId: savedReport.reportid,
-//       radiologistName: radiologist.fullname,
-//       comment:
-//         savedReport.comment ??
-//         (aiPredictionResult?.generated
-//           ? 'Report uploaded and AI prediction generated.'
-//           : 'Report uploaded. AI prediction could not be generated automatically.'),
-//     });
-
-//     return {
-//       message: aiPredictionResult?.generated
-//         ? 'File processed, prediction generated, saved, and sent to doctor successfully'
-//         : 'File processed and saved. Prediction was attempted but not generated. Report sent to doctor successfully',
-//       report: savedReport,
-//       feature: savedFeature,
-//       ocrResult,
-//       aiPredictionResult,
-//       notification: {
-//         sent: true,
-//         sentToDoctor: doctor.fullname,
-//         doctorId: doctor.doctorid,
-//       },
-//     };
-//   } catch (error) {
-//     // Clear invalid token if Firebase rejects it
-//     if (
-//       error?.errorInfo?.code === 'messaging/invalid-argument' ||
-//       error?.errorInfo?.code === 'messaging/registration-token-not-registered'
-//     ) {
-//       doctor.fcmtoken = null;
-//       await this.doctorRepo.save(doctor);
-//     }
-
-//     return {
-//       message: 'File processed, prediction attempted, and saved successfully',
-//       report: savedReport,
-//       feature: savedFeature,
-//       ocrResult,
-//       aiPredictionResult,
-//       notification: {
-//         sent: false,
-//         reason: 'Firebase notification failed',
-//         firebaseErrorCode: error?.errorInfo?.code ?? 'UNKNOWN',
-//         firebaseErrorMessage: error?.message ?? 'Unknown Firebase error',
-//       },
-//     };
-//   }
-// }
-// // get all reports by patient id
-// async getReportsByPatientId(patientId: number) {
-//   if (!patientId || Number.isNaN(Number(patientId))) {
-//     throw new BadRequestException('Valid patientId is required');
-//   }
-
-//   const reports = await this.reportsRepository.find({
-//     where: {
-//       patient: { patientid: patientId },
-//     },
-//     relations: ['patient', 'radiologist', 'feature', 'aiResult'],
-//     order: {
-//       uploadedat: 'DESC',
-//     },
-//   });
-
-//   if (!reports.length) {
-//     throw new NotFoundException(
-//       `No reports found for patient with ID ${patientId}`,
-//     );
-//   }
-
-//   return reports;
-// }
-
-
-// async getAllReports() {
-//   const reports = await this.reportsRepository.find({
-//     relations: ['patient', 'radiologist', 'feature', 'aiResult'],
-//     order: { uploadedat: 'DESC' },
-//   });
-
-//   return {
-//     message: 'Reports fetched successfully',
-//     total: reports.length,
-//     reports: reports.map((report) => ({
-//       reportid: report.reportid,
-//       filename: report.filename,
-//       comment: report.comment,
-//       uploadedat: report.uploadedat,
-//       patient: {
-//         patientid: report.patient?.patientid,
-//         fullname: report.patient?.fullname,
-//         email: report.patient?.email,
-//       },
-//       radiologist: {
-//         radiologistid: report.radiologist?.radiologistid,
-//         fullname: report.radiologist?.fullname,
-//       },
-//       feature: report.feature
-//         ? {
-//             age: report.feature.age,
-//             gender: report.feature.gender,
-//             height: report.feature.height,
-//             weight: report.feature.weight,
-//             ap_hi: report.feature.ap_hi,
-//             ap_lo: report.feature.ap_lo,
-//             cholesterol: report.feature.cholesterol,
-//             gluc: report.feature.gluc,
-//             smoke: report.feature.smoke,
-//             alco: report.feature.alco,
-//             active: report.feature.active,
-//             cardio: report.feature.cardio,
-//           }
-//         : null,
-//       aiResult: report.aiResult
-//         ? {
-//             prediction: report.aiResult.prediction,
-//             probability: report.aiResult.probability,
-//             classification: report.aiResult.classification,
-//             remarks: report.aiResult.remarks,
-//           }
-//         : null,
-//     })),
-//   };
-// }
-
-// }
-
-
 
 import {
   BadRequestException,
@@ -655,7 +24,7 @@ import { AiResult } from 'src/entities/entities/AiResult';
 import { OcrService } from 'src/ocr/ocr.service';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { CadicaService } from 'src/cadica/cadica.service';
-
+import { CardioNlpResult } from 'src/entities/entities/CardioNlpResult';// Add this import
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const ALLOWED_MIME_TYPES = ['application/pdf'];
@@ -714,6 +83,7 @@ export interface UploadAnalyzeResponse {
   feature: Feature;
   ocrResult: any;
   aiPredictionResult: AiPredictionResult;
+   cardioNlpResult: CardioNlpResult | null;
   notification: NotificationResult;
 }
 
@@ -855,6 +225,8 @@ export class ReportsService {
     private readonly firebaseService: FirebaseService,
     private readonly cadicaService: CadicaService,
     private readonly httpService: HttpService,
+      @InjectRepository(CardioNlpResult)
+  private readonly cardioNlpResultRepository: Repository<CardioNlpResult>,
   ) {}
 
   // ── Public Methods ──────────────────────────────────────────────────────────
@@ -931,6 +303,7 @@ async getReportsByPatientId(doctorId: number, patientId: number) {
         'patient.assignments.doctor',
         'radiologist',
         'aiResult',  // Fetch AI result relation
+        'cardioNlpResult',
       ],
       order: {
         uploadedat: 'DESC',  // Ensure most recent reports are fetched first
@@ -1011,6 +384,19 @@ async getReportsByPatientId(doctorId: number, patientId: number) {
                 processedat: report.aiResult.processedat,
               }
             : null,
+
+                // Add Cardio NLP result to the response
+      cardioNlpResult: report.cardioNlpResult
+        ? {
+            clinicalSummary: report.cardioNlpResult.clinicalSummary,
+            framinghamCvdScore: report.cardioNlpResult.framinghamCvdScore,
+            cvdRiskLevel: report.cardioNlpResult.cvdRiskLevel,
+            framinghamStrokeScore: report.cardioNlpResult.framinghamStrokeScore,
+            strokeRiskLevel: report.cardioNlpResult.strokeRiskLevel,
+            detectedDiseases: report.cardioNlpResult.detectedDiseases,
+            verifiedResults: report.cardioNlpResult.verifiedResults,
+          }
+        : null,
         };
       }),
     };
@@ -1201,11 +587,17 @@ const featureForPrediction: Feature = {
 
   // ── 7. Notify assigned doctor (sirf High Risk pe) ──────────────────────
 let notificationResult: NotificationResult = { sent: false, reason: 'Low risk — no notification sent' };
-
+  let savedCardioNlpResult: CardioNlpResult | null = null;  // Initialize as null
 if (
   aiPredictionResult.generated === true &&
   aiPredictionResult.aiResult.prediction === 1  // ← aiResult ke andar
 ) {
+  const nlpResult = await this.callCardioNlpModel(savedFeature);
+
+    // Save the Cardio NLP result
+      savedCardioNlpResult = await this.saveCardioNlpResult(savedReport, nlpResult);
+
+
   notificationResult = await this.notifyAssignedDoctor({
     patientId,
     patient,
@@ -1221,11 +613,57 @@ if (
       feature: savedFeature,
       ocrResult,
       aiPredictionResult,
+      cardioNlpResult: savedCardioNlpResult,
       notification: notificationResult,
     };
   }
 
   // ── Private Helpers ─────────────────────────────────────────────────────────
+
+private async callCardioNlpModel(savedFeature: Feature) {
+  // Call your Cardio NLP model here
+  const cardioPayload = {
+    age: savedFeature.age,
+    gender: savedFeature.gender,
+    height: savedFeature.height,
+    weight: savedFeature.weight,
+    ap_hi: savedFeature.ap_hi,
+    ap_lo: savedFeature.ap_lo,
+    cholesterol: savedFeature.cholesterol,
+    gluc: savedFeature.gluc,
+    smoke: savedFeature.smoke,
+    alco: savedFeature.alco,
+    active: savedFeature.active,
+  };
+
+  const pythonApiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
+  const response = await firstValueFrom(
+    this.httpService.post(`${pythonApiUrl}/cardio-nlp/predict`, cardioPayload),
+  );
+
+  return response.data; // Return the NLP result
+}
+
+private async saveCardioNlpResult(savedReport: Report, nlpResult: any) {
+  const cardioNlpResult = new CardioNlpResult();
+  cardioNlpResult.reportid = savedReport.reportid;
+  cardioNlpResult.clinicalSummary = nlpResult.clinical_summary;
+  cardioNlpResult.framinghamCvdScore = nlpResult.framingham_cvd_score;
+  cardioNlpResult.cvdRiskLevel = nlpResult.cvd_risk_level;
+  cardioNlpResult.framinghamStrokeScore = nlpResult.framingham_stroke_score;
+  cardioNlpResult.strokeRiskLevel = nlpResult.stroke_risk_level;
+  cardioNlpResult.detectedDiseases = nlpResult.detected_diseases;
+  cardioNlpResult.verifiedResults = nlpResult.verified_results;
+
+  const savedCardioNlpResult =await this.cardioNlpResultRepository.save(cardioNlpResult);
+    return savedCardioNlpResult;
+}
+
+
+
+
+
+
 
   private async runAiPrediction(
     savedReport: Report,
@@ -1257,7 +695,7 @@ if (
         };
       }
 
-      const pythonApiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
+      const pythonApiUrl = process.env.PYTHON_API_URL;
       const response = await firstValueFrom(
         this.httpService.post(`${pythonApiUrl}/predict`, predictionPayload),
       );
@@ -1488,6 +926,7 @@ async getReportDetails(reportid: number) {
     relations: {
       feature: true,
       aiResult: true,
+        cardioNlpResult: true,
     },
   });
 
@@ -1495,7 +934,10 @@ async getReportDetails(reportid: number) {
     throw new NotFoundException(`Report ${reportid} not found`);
   }
 
-  return report;
+   return {
+    ...report,
+    cardioNlpResult: report.cardioNlpResult  // Ensure cardioNlpResult is included in the response
+  };
 }
 
 
