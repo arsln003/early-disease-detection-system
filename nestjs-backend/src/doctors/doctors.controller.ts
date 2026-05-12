@@ -20,17 +20,17 @@ export class DoctorsController {
 
   ) {}
 
-  // GET /doctors/:id/assigned-patients/details?severity=critical|moderate|normal|all
-  // @Get(':id/assigned-patients/details')
-  // getAssignedPatientsWithDetails(
-  //   @Param('id', ParseIntPipe) id: number,          // ✅ ParseIntPipe, no manual +id
-  //   @Query('severity') severity: 'all' | 'critical' | 'moderate' | 'normal' = 'all',
-  // ) {
-  //   return this.doctorsService.getAssignedPatientsWithDetails(id, severity);
-  // }
+  //GET /doctors/:id/assigned-patients/details?severity=critical|moderate|normal|all
+  @Get(':id/assigned-patients/details')
+  getAssignedPatientsWithDetails(
+    @Param('id', ParseIntPipe) id: number,          // ✅ ParseIntPipe, no manual +id
+    @Query('severity') severity: 'all' | 'critical' | 'moderate' | 'normal' = 'all',
+  ) {
+    return this.doctorsService.getAssignedPatientsWithDetails(id, severity);
+  }
 
     @Get(':id/assigned-cardio-patients/details')
-  getAssignedPatientsWithDetails(
+  getAssignedcardioPatientsWithDetails(
     @Param('id', ParseIntPipe) id: number,          // ✅ ParseIntPipe, no manual +id
     @Query('severity') severity: 'all' | 'low' | 'high' = 'all',
   ) {
