@@ -1479,4 +1479,27 @@ if (
         : null,
     };
   }
+
+
+
+async getReportDetails(reportid: number) {
+  const report = await this.reportsRepository.findOne({
+    where: { reportid },
+    relations: {
+      feature: true,
+      aiResult: true,
+    },
+  });
+
+  if (!report) {
+    throw new NotFoundException(`Report ${reportid} not found`);
+  }
+
+  return report;
+}
+
+
+
+
+
 }

@@ -146,5 +146,26 @@ async getStrokeReportsByPatientId(
   return this.strokeService.getStrokeReportsByPatientId(patientId);  // Call the service method
 }
 
+//get profile details
+@Get('get-profile/:doctorid')
+getDoctorProfile(@Param('doctorid', ParseIntPipe) doctorid: number) {
+  return this.doctorsService.getDoctorProfile(doctorid);
+}
+
+
+
+//get cardio report
+@Get('cardio-reports/:reportid')
+getReportDetails(@Param('reportid', ParseIntPipe) reportid: number) {
+  return this.reportService.getReportDetails(reportid);
+}
+
+//get stroke report details
+@Get('stroke-reports/:strokereportid')
+getStrokeReportDetails(
+  @Param('strokereportid', ParseIntPipe) strokereportid: number,
+) {
+  return this.strokeService.getStrokeReportDetails(strokereportid);
+}
 
 }

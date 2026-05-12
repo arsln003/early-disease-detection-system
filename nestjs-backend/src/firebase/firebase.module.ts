@@ -6,3 +6,6 @@ import { FirebaseService } from './firebase.service';
   exports: [FirebaseService],   // ← so other modules can use it
 })
 export class FirebaseModule {}
+
+
+

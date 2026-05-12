@@ -492,4 +492,21 @@ const shouldNotify = predictionClass === 'Ischemia' || predictionClass === 'Hemo
         : null,
     };
   }
+
+
+
+  async getStrokeReportDetails(strokereportid: number) {
+  const strokeReport = await this.strokeReportRepository.findOne({
+    where: { strokereportid },
+    relations: {
+      strokeResult: true,
+    },
+  });
+
+  if (!strokeReport) {
+    throw new NotFoundException(`Stroke report ${strokereportid} not found`);
+  }
+
+  return strokeReport;
+}
 }

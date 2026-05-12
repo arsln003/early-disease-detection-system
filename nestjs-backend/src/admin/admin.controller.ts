@@ -194,4 +194,10 @@ reassignDoctor(
   ): Promise<Admin> {
     return this.adminService.addAdmin(fullname, email, password, contactnumber);
   }
+
+
+  @Get('get-profile/:adminid')
+getAdminProfile(@Param('adminid', ParseIntPipe) adminid: number) {
+  return this.adminService.getAdminProfile(adminid);
+}
 }

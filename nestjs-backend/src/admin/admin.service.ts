@@ -1,5 +1,5 @@
 // admin/admin.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Doctor } from 'src/entities/entities/Doctor';
@@ -59,5 +59,20 @@ export class AdminService {
     return this.adminRepository.save(newAdmin);
   }
 
+
+
+  async getAdminProfile(adminid: number) {
+  const admin = await this.adminRepository.findOne({
+    where: { adminid },
+  });
+
+  if (!admin) {
+    throw new NotFoundException('Admin not found');
+  }
+
+  const { password, ...safeAdmin } = admin;
+
+  return safeAdmin;
+}
 
 }
