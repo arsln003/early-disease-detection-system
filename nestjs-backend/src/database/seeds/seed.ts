@@ -14,6 +14,10 @@ const dataSource = new DataSource({
   synchronize: false,
 });
 
+
+
+
+
 async function runSeed() {
   try {
     await dataSource.initialize();

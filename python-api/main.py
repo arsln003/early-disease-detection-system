@@ -3,6 +3,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import os
+from contextlib import asynccontextmanager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from cardio_nlp_model import CardioInput, analyze_patient
+    print("✅ Cardio NLP model loaded!")
+    yield
 
 app = FastAPI(title="Unified Early Disease Detection API")
 
