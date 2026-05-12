@@ -115,6 +115,8 @@ async updateRadiologist(id: number, dto: UpdateRadiologistDto): Promise<Radiolog
     delete dto.password; // ✅ don't overwrite existing password with empty string
   }
 
+
+  
   Object.assign(radiologist, dto);
   return this.radiologistRepository.save(radiologist);
 }

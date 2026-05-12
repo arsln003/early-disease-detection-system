@@ -4,9 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import os
 from contextlib import asynccontextmanager
+from cardio_nlp_model import CardioInput, analyze_patient
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from cardio_nlp_model import CardioInput, analyze_patient
     print("✅ Cardio NLP model loaded!")
     yield
 
@@ -140,9 +141,14 @@ async def stroke_predict_endpoint(
 
 
 # ── Cardio NLP Prediction Model ──────────────────────────────────────
+# @app.post("/cardio-nlp/predict")
+# def cardio_nlp_predict(data: dict):
+#     # from cardio_nlp_model import CardioInput, analyze_patient
+
+#     cardio_input = CardioInput(**data)
+#     return analyze_patient(cardio_input)
+
 @app.post("/cardio-nlp/predict")
 def cardio_nlp_predict(data: dict):
-    from cardio_nlp_model import CardioInput, analyze_patient
-
-    cardio_input = CardioInput(**data)
+    cardio_input = CardioInput(**data)  # ✅ ab kaam karega
     return analyze_patient(cardio_input)

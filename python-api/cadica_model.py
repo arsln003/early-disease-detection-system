@@ -86,6 +86,8 @@ def get_model():
     return _model
 
 
+
+
 # ── Cloudinary Upload Helper ──────────────────────────────────────────────────
 def upload_to_cloudinary(local_path: str, public_id: str, folder: str) -> str | None:
     """Upload a local file to Cloudinary, return secure_url or None."""

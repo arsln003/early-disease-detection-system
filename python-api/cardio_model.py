@@ -54,3 +54,7 @@ def predict(data: CardioInput):
         probability = float(model.predict_proba(df)[0][1])
 
     return {"prediction": prediction, "probability": probability}
+
+
+
+
