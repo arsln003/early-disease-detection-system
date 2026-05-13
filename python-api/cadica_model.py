@@ -1,45 +1,4 @@
 
-
-# from fastapi import HTTPException
-# import os
-# from third_model_v2 import run_patient_inference
-
-# BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
-# MODEL_PATH  = os.path.join(BASE_DIR, "third_best_model_v1.pth")
-# DATASET_PATH = os.path.join(BASE_DIR, "CADICA")
-
-# def cadica_predict(patient: str, save_gradcam: bool = False):
-#     patient_path = os.path.join(DATASET_PATH, "selectedVideos", patient)
-
-#     if not os.path.exists(patient_path):
-#         # Show available patients in the error so it's easy to debug
-#         try:
-#             available = os.listdir(os.path.join(DATASET_PATH, "selectedVideos"))
-#         except Exception:
-#             available = []
-#         raise HTTPException(
-#             status_code=404,
-#             detail=f"Patient '{patient}' not found. Available: {available}"
-#         )
-
-#     if not os.path.exists(MODEL_PATH):
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"Model file not found: {MODEL_PATH}"
-#         )
-
-#     try:
-#         result = run_patient_inference(
-#             model_path   = MODEL_PATH,
-#             dataset_root = DATASET_PATH,
-#             patient      = patient,
-#             save_gradcam = save_gradcam,
-#         )
-#         return result
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-
 import os
 import uuid
 import cv2

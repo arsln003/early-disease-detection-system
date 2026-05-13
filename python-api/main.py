@@ -113,22 +113,6 @@ async def cadica_predict_endpoint(
     return result
 
 
-# @app.post("/cadica/predict")
-# def cadica_predict_endpoint(
-#     patient:      str  = Query(...,       description="Patient ID e.g. p1"),
-#     save_gradcam: bool = Query(False,     description="Generate Grad-CAM figures"),
-# ):
-#     """
-#     Runs patient-level inference on all videos belonging to the given patient.
-#     The patient's videos must already exist inside the CADICA dataset folder.
-
-#     Steps:
-#       1. GET /cadica/patients  → pick a patient ID from the list
-#       2. POST /cadica/predict?patient=p1
-#     """
-#     return cadica_predict(patient, save_gradcam)
-
-
 
 @app.post("/stroke/predict")
 async def stroke_predict_endpoint(
@@ -150,5 +134,5 @@ async def stroke_predict_endpoint(
 
 @app.post("/cardio-nlp/predict")
 def cardio_nlp_predict(data: dict):
-    cardio_input = CardioInput(**data)  # ✅ ab kaam karega
+    cardio_input = CardioInput(**data)  
     return analyze_patient(cardio_input)

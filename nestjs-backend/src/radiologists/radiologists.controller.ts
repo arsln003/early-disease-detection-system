@@ -94,13 +94,7 @@ getAllCadicaVideoReports() {
   return this.cadicaService.getAllCadicaVideoReports();
 }
 
-// // ── CADICA Video Reports by Patient ID ─────────────────────────────
-// @Get('patients/:patientId/cadica-video-reports')
-// getCadicaVideoReportsByPatientId(
-//   @Param('patientId', ParseIntPipe) patientId: number,
-// ) {
-//   return this.cadicaService.getCadicaVideoReportsByPatientId(patientId);
-// }
+
 
 // ──get all Stroke Reports ─────────────────────────────────────────────────
 @Get('all-stroke-reports')
@@ -108,14 +102,6 @@ getAllStrokeReports() {
   return this.strokeService.getAllStrokeReports();
 }
 
-
-// // ── Stroke Reports by Patient ID ─────────────────────────────────────
-// @Get('patients/:patientId/stroke-reports')
-// getStrokeReportsByPatientId(
-//   @Param('patientId', ParseIntPipe) patientId: number,
-// ) {
-//   return this.strokeService.getStrokeReportsByPatientId(patientId);
-// }
 
 
 

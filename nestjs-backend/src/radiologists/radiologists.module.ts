@@ -17,6 +17,9 @@ import { CadicaVideoReport } from 'src/entities/entities/CadicaVideoReport';
 import { CadicaModule } from 'src/cadica/cadica.module';
 import { StrokeModule } from 'src/stroke/stroke.module';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
+
+
+
 @Module({
   imports: [TypeOrmModule.forFeature([Radiologist,Report,Assignment,Doctor,Patient,CadicaVideoReport]),  // ✅ add Doctor and Patient to TypeOrmModule
    FirebaseModule,
